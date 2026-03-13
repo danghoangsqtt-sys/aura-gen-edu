@@ -8,20 +8,14 @@ export const CURRENT_VERSION = pkg.version;
 /**
  * URL trỏ đến file package.json trên GitHub.
  */
-const UPDATE_URL = "https://raw.githubusercontent.com/danghoangsqtt-sys/edugen-app/main/package.json"; 
+const UPDATE_URL = "https://raw.githubusercontent.com/danghoangsqtt-sys/aura-gen-edu/main/package.json"; 
 
 export const checkAppUpdate = async (): Promise<AppUpdate> => {
   try {
     // 2. Thêm timestamp vào URL để tránh cache CDN của GitHub
     const urlWithNoCache = `${UPDATE_URL}?t=${new Date().getTime()}`;
 
-    const response = await fetch(urlWithNoCache, {
-      cache: 'no-store',
-      headers: {
-        'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache'
-      }
-    });
+    const response = await fetch(urlWithNoCache);
     
     if (!response || !response.ok) {
       console.warn(`Lỗi kết nối update server: ${response.status}`);

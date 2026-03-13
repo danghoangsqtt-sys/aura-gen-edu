@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { ExamPaper as ExamPaperType, QuestionType, Question } from '../types';
+import { ExamPaper as ExamPaperType, QuestionType, Question, BloomLevel } from '../types';
 import { regenerateSingleQuestion } from '../services/geminiService';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
   const { config, questions } = data;
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Question | null>(null);
 
   const handleRegenerate = async (index: number) => {
     setRegeneratingIndex(index);
@@ -23,12 +26,56 @@ const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
     }
   };
 
+  const startEdit = (q: Question) => {
+    setEditingId(q.id);
+    setEditForm(JSON.parse(JSON.stringify(q))); // Deep copy
+  };
+
+  const saveEdit = () => {
+    if (editForm) {
+      const index = questions.findIndex(q => q.id === editForm.id);
+      if (index !== -1) {
+        onUpdateQuestion(index, editForm);
+      }
+      setEditingId(null);
+      setEditForm(null);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  // Hàm chuẩn hóa loại câu hỏi để so khớp chính xác hơn
+  const getStandardType = (input: string): string => {
+    if (!input) return '';
+    const lower = input.toLowerCase().trim();
+    
+    // Mapping tiếng Anh sang tiếng Việt (Enum values)
+    if (lower.includes('multiple') || lower.includes('choice')) return QuestionType.MULTIPLE_CHOICE;
+    if (lower.includes('essay') || lower.includes('open') || lower.includes('construct')) return QuestionType.ESSAY;
+    if (lower.includes('fill') || lower.includes('blank')) return QuestionType.FILL_BLANKS;
+    if (lower.includes('match')) return QuestionType.MATCHING;
+    if (lower.includes('order') || lower.includes('arrange')) return QuestionType.WORD_ORDER;
+    if (lower.includes('spell') || lower.includes('dictation')) return QuestionType.SPELLING;
+    
+    // Mapping tiếng Việt (có dấu/không dấu)
+    if (lower.includes('trắc nghiệm') || lower.includes('trac nghiem')) return QuestionType.MULTIPLE_CHOICE;
+    if (lower.includes('tự luận') || lower.includes('tu luan')) return QuestionType.ESSAY;
+    if (lower.includes('điền') || lower.includes('dien tu')) return QuestionType.FILL_BLANKS;
+    if (lower.includes('nối') || lower.includes('noi tu')) return QuestionType.MATCHING;
+    if (lower.includes('xếp') || lower.includes('sap xep')) return QuestionType.WORD_ORDER;
+    if (lower.includes('chính tả') || lower.includes('chinh ta')) return QuestionType.SPELLING;
+
+    return input; // Fallback
+  };
+
   return (
     <div className="a4-container font-times text-black bg-white shadow-2xl p-[15mm] min-h-[297mm] w-[210mm] relative overflow-hidden print:overflow-visible print:block print:h-auto print:shadow-none print:p-[10mm] print:m-0 flex flex-col">
-      {/* Header chuẩn hành chính - Đã sửa lỗi xuống dòng & canh lề */}
+      {/* Header chuẩn hành chính */}
       <div className="flex justify-between items-start mb-6 relative z-10">
         <div className="text-center">
-          {/* Tên trường & Tổ chuyên môn */}
           <p className="font-bold uppercase text-[10pt] md:text-[11pt] whitespace-nowrap">
             {config.schoolName || "TRƯỜNG THCS & THPT ..."}
           </p>
@@ -38,7 +85,6 @@ const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
         </div>
         
         <div className="text-center">
-          {/* Quốc hiệu & Tiêu ngữ - Sử dụng whitespace-nowrap để chống rớt dòng */}
           <p className="font-bold uppercase text-[10pt] md:text-[11pt] whitespace-nowrap">
             CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
           </p>
@@ -73,7 +119,9 @@ const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
       {/* Nội dung chính các câu hỏi */}
       <div className="flex-1 space-y-5 text-[11pt] md:text-[12pt] leading-relaxed relative">
         {config.sections.map((section, sIdx) => {
-          const sectionQuestions = questions.filter(q => q.type === section.type);
+          // Sử dụng hàm chuẩn hóa để so sánh loại câu hỏi
+          const sectionQuestions = questions.filter(q => getStandardType(q.type) === getStandardType(section.type));
+          
           if (sectionQuestions.length === 0) return null;
 
           return (
@@ -85,14 +133,94 @@ const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
               <div className="space-y-3">
                 {sectionQuestions.map((q) => {
                   const globalIdx = questions.indexOf(q);
+                  
+                  // --- EDIT MODE RENDERING ---
+                  if (editingId === q.id && editForm) {
+                    return (
+                        <div key={q.id} className="bg-white p-6 border-2 border-indigo-500 rounded-xl shadow-2xl relative z-50 text-[10pt] font-sans break-inside-avoid">
+                            <div className="mb-4">
+                                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Nội dung câu hỏi</label>
+                                <textarea
+                                    className="w-full p-3 border border-slate-300 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-indigo-100 outline-none"
+                                    rows={3}
+                                    value={editForm.content}
+                                    onChange={e => setEditForm({...editForm, content: e.target.value})}
+                                />
+                            </div>
+                            
+                            {editForm.options && (
+                                <div className="mb-4">
+                                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Các lựa chọn</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {editForm.options.map((opt, oIdx) => (
+                                            <div key={oIdx} className="flex items-center gap-2">
+                                                <span className="font-bold text-slate-400 w-4">{String.fromCharCode(65 + oIdx)}.</span>
+                                                <input
+                                                    className="flex-1 p-2 border border-slate-300 rounded-lg text-slate-700 text-sm focus:border-indigo-500 outline-none"
+                                                    value={opt}
+                                                    onChange={e => {
+                                                        const newOpts = [...(editForm.options || [])];
+                                                        newOpts[oIdx] = e.target.value;
+                                                        setEditForm({...editForm, options: newOpts});
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Đáp án đúng</label>
+                                    <input
+                                        className="w-full p-2 border border-slate-300 rounded-lg text-emerald-600 font-bold focus:border-emerald-500 outline-none"
+                                        value={editForm.correctAnswer}
+                                        onChange={e => setEditForm({...editForm, correctAnswer: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Mức độ tư duy</label>
+                                     <select
+                                        className="w-full p-2 border border-slate-300 rounded-lg text-slate-700 outline-none bg-white"
+                                        value={editForm.bloomLevel}
+                                        onChange={e => setEditForm({...editForm, bloomLevel: e.target.value as any})}
+                                    >
+                                        {Object.values(BloomLevel).map(l => <option key={l} value={l}>{l}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Giải thích chi tiết (Cho đáp án)</label>
+                                <textarea
+                                    className="w-full p-3 border border-slate-300 rounded-lg text-slate-600 italic bg-slate-50 focus:bg-white transition-colors outline-none"
+                                    rows={2}
+                                    value={editForm.explanation}
+                                    onChange={e => setEditForm({...editForm, explanation: e.target.value})}
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                                <button onClick={cancelEdit} className="px-4 py-2 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-lg uppercase tracking-wider">Hủy bỏ</button>
+                                <button onClick={saveEdit} className="px-6 py-2 text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg uppercase tracking-wider shadow-lg shadow-indigo-100">Lưu thay đổi</button>
+                            </div>
+                        </div>
+                    );
+                  }
+
+                  // --- NORMAL VIEW ---
+                  const stdType = getStandardType(q.type);
+                  
                   return (
-                    <div key={q.id} className="group relative pl-1 break-inside-avoid">
+                    <div key={q.id} className="group relative pl-1 break-inside-avoid hover:bg-indigo-50/30 rounded-lg -ml-2 p-2 transition-colors">
                       <div className="flex items-start">
                         <span className="font-bold mr-1.5 whitespace-nowrap">Câu {globalIdx + 1}.</span>
                         <div className="flex-1">
                           <p className="whitespace-pre-wrap">{q.content}</p>
                           
-                          {q.type === QuestionType.MULTIPLE_CHOICE && q.options && (
+                          {/* Render cho Trắc nghiệm */}
+                          {stdType === QuestionType.MULTIPLE_CHOICE && q.options && (
                             <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 mt-1.5">
                               {q.options.map((opt, oIdx) => (
                                 <div key={oIdx} className="flex items-baseline">
@@ -103,7 +231,8 @@ const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
                             </div>
                           )}
 
-                          {q.type === QuestionType.MATCHING && q.matchingLeft && q.matchingRight && (
+                          {/* Render cho Nối từ */}
+                          {stdType === QuestionType.MATCHING && q.matchingLeft && q.matchingRight && (
                             <div className="grid grid-cols-2 gap-x-10 mt-2 border border-gray-100 p-3 bg-gray-50/20">
                               <div className="space-y-1">
                                 {q.matchingLeft.map((item, i) => (
@@ -118,10 +247,11 @@ const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
                             </div>
                           )}
 
-                          {(q.type === QuestionType.ESSAY || 
-                            q.type === QuestionType.WORD_ORDER || 
-                            q.type === QuestionType.SPELLING ||
-                            q.type === QuestionType.FILL_BLANKS) && (
+                          {/* Render cho các loại khác (Tự luận, Điền từ...) */}
+                          {(stdType === QuestionType.ESSAY || 
+                            stdType === QuestionType.WORD_ORDER || 
+                            stdType === QuestionType.SPELLING ||
+                            stdType === QuestionType.FILL_BLANKS) && (
                             <div className="mt-2 space-y-3">
                               <div className="border-b border-dotted border-black w-full h-3.5 opacity-20"></div>
                               <div className="border-b border-dotted border-black w-full h-3.5 opacity-20"></div>
@@ -129,14 +259,22 @@ const ExamPaper: React.FC<Props> = ({ data, onUpdateQuestion }) => {
                           )}
                         </div>
                         
-                        <div className="hidden group-hover:flex items-center no-print ml-2 self-start">
+                        {/* Action Buttons */}
+                        <div className="hidden group-hover:flex items-center no-print ml-2 self-start gap-1">
+                           <button 
+                            onClick={() => startEdit(q)}
+                            className="p-1.5 bg-white hover:bg-emerald-50 rounded-lg text-emerald-600 border border-emerald-100 shadow-sm"
+                            title="Chỉnh sửa nội dung"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                          </button>
                            <button 
                             onClick={() => handleRegenerate(globalIdx)}
                             disabled={regeneratingIndex === globalIdx}
-                            className="p-1 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100 shadow-sm"
-                            title="Đổi câu hỏi"
+                            className="p-1.5 bg-white hover:bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-100 shadow-sm"
+                            title="Tạo lại bằng AI"
                           >
-                            <svg className={`w-3 h-3 ${regeneratingIndex === globalIdx ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`w-3.5 h-3.5 ${regeneratingIndex === globalIdx ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           </button>

@@ -108,7 +108,31 @@ export const extractVocabularyFromFile = async (base64Data: string, mimeType: st
 export const generateExamContent = async (config: ExamConfig): Promise<Question[]> => {
   const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
-  const prompt = `Tạo đề thi tiếng Anh JSON cho chủ đề: ${config.topic}. Ma trận: ${JSON.stringify(config.sections)}`;
+
+  // Xây dựng Prompt chi tiết hơn để khắc phục vấn đề "đề thi giống nhau"
+  // Thay đổi: Không hardcode "Tiếng Anh", sử dụng config.subject
+  // Thay đổi: Đưa customRequirement lên ưu tiên cao nhất
+  const prompt = `
+    Đóng vai trò là một giáo viên bộ môn: ${config.subject}.
+    Nhiệm vụ: Tạo một đề thi trắc nghiệm/tự luận dưới dạng JSON.
+    
+    Thông tin đề thi:
+    - Chủ đề chính: ${config.topic}
+    - Môn học: ${config.subject}
+    - Tiêu đề: ${config.title}
+    
+    YÊU CẦU ĐẶC BIỆT TỪ NGƯỜI DÙNG (PROMPT):
+    "${config.customRequirement || "Tạo đề thi tổng hợp kiến thức tiêu chuẩn."}"
+    
+    Cấu trúc ma trận câu hỏi mong muốn (nếu Prompt không ghi đè):
+    ${JSON.stringify(config.sections)}
+
+    Yêu cầu đầu ra (Quan trọng):
+    1. Nội dung câu hỏi phải mới mẻ, sáng tạo, KHÔNG lặp lại các câu hỏi phổ thông nhàm chán.
+    2. Nếu môn học là Tiếng Anh, nội dung bằng tiếng Anh. Nếu là môn khác (Văn, Sử, Địa...), nội dung bằng Tiếng Việt.
+    3. Trả về đúng định dạng JSON Schema bên dưới.
+    4. "matchingLeft" và "matchingRight" chỉ dùng cho dạng câu hỏi MATCHING (Nối từ), để trống nếu là trắc nghiệm.
+  `;
   
   try {
     const response = await ai.models.generateContent({
@@ -116,6 +140,8 @@ export const generateExamContent = async (config: ExamConfig): Promise<Question[
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        // Tăng temperature để tạo sự đa dạng
+        temperature: 1.0, 
         responseSchema: {
           type: Type.ARRAY,
           items: {
@@ -138,7 +164,10 @@ export const generateExamContent = async (config: ExamConfig): Promise<Question[
       }
     });
     return JSON.parse(cleanJsonResponse(response.text)) as Question[];
-  } catch (error) { throw error; }
+  } catch (error) { 
+    console.error("Generate Exam Error:", error);
+    throw error; 
+  }
 };
 
 export const regenerateSingleQuestion = async (config: ExamConfig, oldQuestion: Question): Promise<Question> => {
@@ -146,7 +175,7 @@ export const regenerateSingleQuestion = async (config: ExamConfig, oldQuestion: 
   if (!apiKey) throw new Error("Chưa cấu hình API Key.");
   
   const ai = new GoogleGenAI({ apiKey });
-  const prompt = `Tạo một câu hỏi tiếng Anh mới thay thế cho câu hỏi cũ này: "${oldQuestion.content}".
+  const prompt = `Tạo một câu hỏi ${config.subject} mới thay thế cho câu hỏi cũ này: "${oldQuestion.content}".
     Yêu cầu:
     - Loại câu hỏi: ${oldQuestion.type}
     - Mức độ Bloom: ${oldQuestion.bloomLevel}

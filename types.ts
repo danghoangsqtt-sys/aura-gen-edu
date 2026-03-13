@@ -111,3 +111,15 @@ export interface SpeakingExamConfig {
   className?: string;
   duration: number; // minutes
 }
+
+export enum EyeState {
+  IDLE = 'idle',
+  SPEAKING = 'speaking',
+  BLINKING = 'blinking'
+}
+
+export enum AppMode {
+  CHAT = 'chat',
+  VOICE = 'voice',
+  IDLE = 'idle'
+}

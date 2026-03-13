@@ -14,6 +14,7 @@ import ChatbotPanel from './components/ChatbotPanel';
 import DictionaryPanel from './components/DictionaryPanel';
 import VocabBankPanel from './components/VocabBankPanel';
 import SpeakingArena from './components/SpeakingArena';
+import FloatingAura from './components/FloatingAura';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'create' | 'library' | 'game' | 'chatbot' | 'settings' | 'dictionary' | 'vocab' | 'speaking'>('create');
@@ -147,10 +148,13 @@ const App: React.FC = () => {
         <main className="main-workspace">
           {activeTab === 'create' && (
             <div className="flex h-full animate-content">
-              <aside className="w-[320px] border-r bg-white p-4 overflow-y-auto no-print"><ConfigPanel onGenerate={handleGenerate} isGenerating={isGenerating} /></aside>
+              <aside className="w-[320px] border-r bg-white p-4 overflow-y-auto no-print flex flex-col">
+                <ConfigPanel onGenerate={handleGenerate} isGenerating={isGenerating} />
+              </aside>
               <div className="flex-1 flex flex-col items-center justify-center grayscale opacity-10 p-10 text-center">
                 <svg className="w-24 h-24 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 <h2 className="text-2xl font-black uppercase tracking-[12px]">Thiết lập đề thi</h2>
+                <p className="text-xs font-bold mt-2 tracking-widest">SỬ DỤNG BẢNG CẤU HÌNH BÊN TRÁI</p>
               </div>
             </div>
           )}
@@ -195,6 +199,7 @@ const App: React.FC = () => {
           )}
         </main>
       </div>
+      <FloatingAura />
     </div>
   );
 };
