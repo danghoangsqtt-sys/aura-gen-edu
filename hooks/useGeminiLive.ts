@@ -17,7 +17,7 @@ export const useGeminiLive = () => {
     };
   }, []);
 
-  const connect = async () => {
+  const connect = async (instruction?: string) => {
     const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
         console.error("VITE_GEMINI_API_KEY is missing from environment variables.");
@@ -66,7 +66,7 @@ export const useGeminiLive = () => {
         };
 
         // Start WS Connection
-        liveServiceRef.current.connect();
+        liveServiceRef.current.connect(instruction);
 
     } catch (err) {
         console.error("Failed to connect to Gemini Live:", err);

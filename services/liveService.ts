@@ -1,6 +1,9 @@
+export const DEFAULT_AURA_INSTRUCTION = "You are Aura, an expert and friendly English tutor embedded in an educational platform. Your primary goal is to help the user practice English communication to achieve a B2 Aptis ESOL level. Speak clearly, concisely, and naturally. If the user mispronounces a word, gently correct them using IPA transcription. Keep your responses relatively short to encourage a back-and-forth conversational flow. Always respond in English unless explicitly asked to translate to Vietnamese.";
+
 export class LiveService {
   private ws: WebSocket | null = null;
   private url: string;
+  private instruction: string = DEFAULT_AURA_INSTRUCTION;
 
   public onMessage?: (data: any) => void;
   public onConnected?: () => void;
@@ -11,7 +14,8 @@ export class LiveService {
     this.url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
   }
 
-  connect() {
+  connect(instruction?: string) {
+    if (instruction) this.instruction = instruction;
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
@@ -60,7 +64,7 @@ export class LiveService {
         model: "models/gemini-2.0-flash-exp",
         systemInstruction: {
           parts: [{
-            text: "You are Aura, an expert and friendly English tutor embedded in an educational platform. Your primary goal is to help the user practice English communication to achieve a B2 Aptis ESOL level. Speak clearly, concisely, and naturally. If the user mispronounces a word, gently correct them using IPA transcription. Keep your responses relatively short to encourage a back-and-forth conversational flow. Always respond in English unless explicitly asked to translate to Vietnamese."
+            text: this.instruction
           }]
         }
       }

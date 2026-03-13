@@ -16,9 +16,10 @@ import VocabBankPanel from './components/VocabBankPanel';
 import SpeakingArena from './components/SpeakingArena';
 import FloatingAura from './components/FloatingAura';
 import MacaronicStory from './components/MacaronicStory';
+import IPAClinic from './components/IPAClinic';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'create' | 'library' | 'game' | 'chatbot' | 'settings' | 'dictionary' | 'vocab' | 'speaking' | 'story'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'library' | 'game' | 'chatbot' | 'settings' | 'dictionary' | 'vocab' | 'speaking' | 'story' | 'ipa'>('create');
   const [examList, setExamList] = useState<ExamPaperType[]>([]);
   const [currentExamIndex, setCurrentExamIndex] = useState<number>(-1);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -136,6 +137,7 @@ const App: React.FC = () => {
           <RailItem icon="story" active={activeTab === 'story'} onClick={() => setActiveTab('story')} label="Truyện Chêm" />
           <RailItem icon="dictionary" active={activeTab === 'dictionary'} onClick={() => setActiveTab('dictionary')} label="Từ điển" />
           <RailItem icon="speaking" active={activeTab === 'speaking'} onClick={() => setActiveTab('speaking')} label="Speaking" />
+          <RailItem icon="ipa" active={activeTab === 'ipa'} onClick={() => setActiveTab('ipa')} label="IPA Clinic" />
           <RailItem icon="chatbot" active={activeTab === 'chatbot'} onClick={() => setActiveTab('chatbot')} label="Gia sư AI" />
           <RailItem icon="game" active={activeTab === 'game'} onClick={() => setActiveTab('game')} label="Arena" />
           
@@ -165,6 +167,7 @@ const App: React.FC = () => {
           {activeTab === 'vocab' && <VocabBankPanel />}
           {activeTab === 'story' && <MacaronicStory />}
           {activeTab === 'speaking' && <div className="h-full animate-content"><SpeakingArena /></div>}
+          {activeTab === 'ipa' && <IPAClinic />}
           {activeTab === 'dictionary' && <div className="h-full p-6 animate-content"><DictionaryPanel /></div>}
           {activeTab === 'chatbot' && <div className="h-full animate-content"><ChatbotPanel /></div>}
           {activeTab === 'game' && <div className="h-full animate-content"><GameCenter initialQuestions={currentExam?.questions || []} initialExamTitle={currentExam?.config.title || ""} examList={examList} /></div>}
@@ -218,6 +221,7 @@ const RailItem: React.FC<{ icon: string; active: boolean; onClick: () => void; l
       case 'dictionary': return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>;
       case 'game': return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
       case 'story': return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>;
+      case 'ipa': return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>;
       case 'settings': return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
       default: return null;
     }
