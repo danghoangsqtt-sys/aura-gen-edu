@@ -24,7 +24,7 @@ const FloatingAura: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col items-end">
+    <div className="fixed bottom-0 right-5 z-[9999] flex flex-col items-end">
       {isMenuOpen && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-3 mb-4 border border-gray-200 dark:border-gray-700 animate-fade-in-up">
           <p className="text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300 text-center">Tương tác với Aura</p>
