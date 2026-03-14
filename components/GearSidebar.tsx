@@ -22,7 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'settings',   label: 'Cài đặt',     emoji: '⚙️', color: 'from-slate-500 to-gray-500' },
 ];
 
-const RADIUS = 220;
+const RADIUS = 260;
 const START_ANGLE = -80;
 const END_ANGLE = 80;
 
@@ -47,14 +47,16 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
   };
 
   return (
-    <div className="fixed left-0 top-1/2 -translate-y-1/2 z-50 no-print">
-      {/* Backdrop */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/10 backdrop-blur-[1px] -z-10"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+    <>
+      {/* Focus Mode Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[40] transition-all duration-300 no-print ${
+          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsOpen(false)}
+      />
+
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-[50] no-print">
 
       {/* Menu items */}
       {NAV_ITEMS.map((item, index) => {
@@ -68,8 +70,8 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
             className="absolute left-0 top-1/2"
             style={{
               transform: isOpen
-                ? `translate(${pos.x + 28}px, ${pos.y - 20}px)`
-                : 'translate(0px, -20px)',
+                ? `translate(${pos.x + 36}px, ${pos.y - 28}px)`
+                : 'translate(0px, -28px)',
               opacity: isOpen ? 1 : 0,
               transition: `all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${isOpen ? delay : (itemCount - index) * 30}ms`,
               pointerEvents: isOpen ? 'auto' : 'none',
@@ -81,7 +83,7 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
               title={item.label}
             >
               <div className={`
-                w-10 h-10 rounded-full flex items-center justify-center text-lg
+                w-14 h-14 rounded-full flex items-center justify-center text-2xl
                 shadow-lg transition-all duration-200 border-2
                 ${isActive
                   ? `bg-gradient-to-br ${item.color} text-white border-white scale-110 shadow-xl`
@@ -91,8 +93,8 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
                 {item.emoji}
               </div>
               <span className={`
-                absolute left-12 whitespace-nowrap text-[10px] font-black uppercase tracking-wider
-                px-2.5 py-1 rounded-lg transition-all duration-200
+                absolute left-16 whitespace-nowrap text-sm font-semibold tracking-wider
+                px-3 py-1.5 rounded-xl transition-all duration-200 shadow-md
                 opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0
                 ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white'}
               `}>
@@ -129,6 +131,7 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
         </svg>
       </button>
     </div>
+    </>
   );
 };
 
