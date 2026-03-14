@@ -180,20 +180,18 @@ const Live2DAvatar: React.FC<Live2DAvatarProps> = ({ state, mode, volume, modelU
       isInitialized.current = false;
       
       if (appRef.current) {
-        // Fix PIXI InteractionManager Uncaught TypeError
-        // 1. Disable interactivity to stop processing pointer events during teardown
-        if (appRef.current.stage) {
-            appRef.current.stage.interactiveChildren = false;
-        }
+        // Fix PIXI InteractionManager Uncaught TypeError deep in Ticker._tick
+        // 1. Dừng Ticker NGAY LẬP TỨC để tránh gọi update() trong quá trình gỡ bỏ
+        appRef.current.ticker.stop();
         
-        // 2. Safely remove model from stage if it exists
-        if (modelRef.current && appRef.current.stage) {
-            appRef.current.stage.removeChild(modelRef.current as any);
+        // 2. Hủy hoàn toàn InteractionManager (Gây ra lỗi Uncaught TypeError)
+        if (appRef.current.renderer && (appRef.current.renderer as any).plugins && (appRef.current.renderer as any).plugins.interaction) {
+             try {
+                 (appRef.current.renderer as any).plugins.interaction.destroy();
+             } catch (e) {
+                 console.error("InteractionManager Destroy Error:", e);
+             }
         }
-
-        // 3. Destroy PIXI App safely
-        appRef.current.destroy(true, { children: true, texture: true } as any);
-        appRef.current = null;
       }
       
       if (modelRef.current) {
@@ -209,6 +207,16 @@ const Live2DAvatar: React.FC<Live2DAvatarProps> = ({ state, mode, volume, modelU
              console.error("Live2D Destroy Error:", e);
          }
          modelRef.current = null;
+      }
+      
+      if (appRef.current) {
+        // 3. Destroy PIXI App safely
+        try {
+            appRef.current.destroy(true, { children: true, texture: true } as any);
+        } catch (e) {
+            console.error("PIXI App Destroy Error:", e);
+        }
+        appRef.current = null;
       }
       
       if (containerRef.current) {
