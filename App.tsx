@@ -16,7 +16,7 @@ import VocabBankPanel from './components/VocabBankPanel';
 import SpeakingArena from './components/SpeakingArena';
 import FloatingAura from './components/FloatingAura';
 import MacaronicStory from './components/MacaronicStory';
-import IPAClinic from './components/IPAClinic';
+import IPAMaster from './components/IPA/IPAMaster';
 import GearSidebar from './components/GearSidebar';
 
 const App: React.FC = () => {
@@ -151,7 +151,7 @@ const App: React.FC = () => {
           {activeTab === 'vocab' && <VocabBankPanel />}
           {activeTab === 'story' && <MacaronicStory />}
           {activeTab === 'speaking' && <div className="h-full animate-content"><SpeakingArena /></div>}
-          {activeTab === 'ipa' && <IPAClinic />}
+          {activeTab === 'ipa' && <IPAMaster />}
           {activeTab === 'dictionary' && <div className="h-full p-6 animate-content"><DictionaryPanel /></div>}
           {activeTab === 'chatbot' && <div className="h-full animate-content"><ChatbotPanel /></div>}
           {activeTab === 'game' && <div className="h-full animate-content"><GameCenter initialQuestions={currentExam?.questions || []} initialExamTitle={currentExam?.config.title || ""} examList={examList} /></div>}
