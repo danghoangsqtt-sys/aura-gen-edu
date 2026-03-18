@@ -7,6 +7,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+backend/model_cache/
+backend/codec_cache/
+backend/venv/
+backend/src/vieneu/cache/
+backend/
+# --- LOCAL AI BACKEND ---
+# Bỏ qua môi trường ảo và bộ nhớ đệm
+backend/venv/
+backend/__pycache__/
+backend/model_cache/
+
+# Bỏ qua các file model AI nặng
+*.gguf
+*.pt
+*.bin
+
 node_modules/
 dist/
 dist-ssr

@@ -12,6 +12,11 @@ interface AuraState {
   setIsLiveVoice: (status: boolean) => void;
   conversationHistory: string[]; // Last 5 messages for AI context
   addConversation: (text: string) => void;
+  // TTS & Lip-Sync
+  ttsVolume: number;
+  setTtsVolume: (vol: number) => void;
+  isAuraSpeaking: boolean;
+  setIsAuraSpeaking: (status: boolean) => void;
 }
 
 export const useAuraStore = create<AuraState>((set) => ({
@@ -34,4 +39,10 @@ export const useAuraStore = create<AuraState>((set) => ({
         return { conversationHistory: newHistory };
     });
   },
+
+  ttsVolume: 0,
+  setTtsVolume: (vol) => set({ ttsVolume: vol }),
+  
+  isAuraSpeaking: false,
+  setIsAuraSpeaking: (status) => set({ isAuraSpeaking: status }),
 }));

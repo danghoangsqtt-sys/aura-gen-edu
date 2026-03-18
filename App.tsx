@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ExamConfig, ExamPaper as ExamPaperType, Question } from './types';
 import { generateExamContent } from './services/geminiService';
+import { LocalFileService } from './services/localFileService';
 import { storage, STORAGE_KEYS } from './services/storageAdapter';
 import ConfigPanel from './components/ConfigPanel';
 import ExamPaper from './components/ExamPaper';
@@ -17,6 +18,8 @@ import MacaronicStory from './components/MacaronicStory';
 import IPAMaster from './components/IPA/IPAMaster';
 import GearSidebar from './components/GearSidebar';
 import WritingMaster from './components/Writing/WritingMaster';
+import SetupWizard from './components/Onboarding/SetupWizard';
+import BootScreen from './components/BootScreen';
 import { useAuraStore } from './store/useAuraStore';
 
 const App: React.FC = () => {
@@ -27,6 +30,8 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'exam' | 'answer' | 'both'>('exam');
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [isCinematicSpeaking, setIsCinematicSpeaking] = useState(false);
+  const [isFirstRun, setIsFirstRun] = useState<boolean | null>(null);
+  const [isSystemBooting, setIsSystemBooting] = useState(true);
   
   const { currentMode, setCurrentMode, isLiveVoice } = useAuraStore();
 
@@ -34,9 +39,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      console.info('[App] -> [Action]: Initializing App (Local Mode)...');
+      console.info('[App] -> [Action]: Initializing App (Local AI Offline Mode)...');
+      
+      // Check first run
+      const hasInit = localStorage.getItem('aura_initialized');
+      setIsFirstRun(!hasInit);
+
       try {
-        const savedExams = await storage.get<ExamPaperType[]>(STORAGE_KEYS.EXAMS, []);
+        const savedExams = await LocalFileService.loadExams();
         setExamList(savedExams);
       } catch (err) {
         console.error('[App] -> [ERROR]: Failed to load local data:', err);
@@ -74,8 +84,8 @@ const App: React.FC = () => {
       const newList = [newExam, ...examList];
       setExamList(newList);
       
-      // LƯU XUỐNG Ổ CỨNG
-      await storage.set(STORAGE_KEYS.EXAMS, newList);
+      // LƯU XUỐNG Ổ CỨNG (Electron FS)
+      await LocalFileService.saveExams(newList);
       
       setCurrentExamIndex(0);
       setActiveTab('library');
@@ -96,14 +106,14 @@ const App: React.FC = () => {
     updatedExamList[currentExamIndex] = updatedExam;
     
     setExamList(updatedExamList);
-    await storage.set(STORAGE_KEYS.EXAMS, updatedExamList);
+    await LocalFileService.saveExams(updatedExamList);
   };
 
   const deleteExam = async (id: string) => {
     if (!window.confirm("Xác nhận xóa đề thi?")) return;
     const newList = examList.filter(e => e.id !== id);
     setExamList(newList);
-    await storage.set(STORAGE_KEYS.EXAMS, newList);
+    await LocalFileService.saveExams(newList);
     
     if (currentExam?.id === id) setCurrentExamIndex(-1);
   };
@@ -115,6 +125,19 @@ const App: React.FC = () => {
   };
 
   // Skip desktop update checks and window controls as we migrated to web
+
+  if (isFirstRun === null) return null; // Loading state
+
+  if (isSystemBooting) {
+    return <BootScreen onReady={() => setIsSystemBooting(false)} />;
+  }
+
+  if (isFirstRun) {
+    return <SetupWizard onComplete={() => {
+      localStorage.setItem('aura_initialized', 'true');
+      setIsFirstRun(false);
+    }} />;
+  }
 
   return (
     <div className="desktop-window">

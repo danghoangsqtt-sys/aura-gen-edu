@@ -4,6 +4,8 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { OllamaService, ChatMessage } from '../services/ollamaService';
+import { VieneuService } from '../services/vieneuService';
+import { useAuraStore } from '../store/useAuraStore';
 
 interface Message {
   role: 'user' | 'model';
@@ -26,7 +28,8 @@ const ChatbotPanel: React.FC<ChatbotPanelProps> = ({ onClose }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  const { setTtsVolume, setIsAuraSpeaking, isAuraSpeaking } = useAuraStore();
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,40 +163,27 @@ const ChatbotPanel: React.FC<ChatbotPanelProps> = ({ onClose }) => {
     }
   };
 
-  // --- TTS (SENSEI SPEAKS) ---
-  const speakText = async (text: string) => {
-    const apiKey = getApiKey();
-    if (!apiKey || isSpeaking) return;
-
-    setIsSpeaking(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: `Hãy đọc đoạn văn này một cách chậm rãi, rõ ràng với tông giọng của một giáo viên thân thiện: ${text}` }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-          },
-        },
-      });
-
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        const bytes = decodeBase64(base64Audio);
-        const audioBuffer = await decodeAudioData(bytes, audioContext, 24000, 1);
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
-        source.onended = () => setIsSpeaking(false);
-        source.start();
-      }
-    } catch (err) {
-      console.error(err);
-      setIsSpeaking(false);
+  // --- TTS (SENSEI SPEAKS - VIENEU LOCAL) ---
+  const speakText = (text: string) => {
+    if (isAuraSpeaking) {
+      VieneuService.getInstance().stop();
+      setIsAuraSpeaking(false);
+      setTtsVolume(0);
+      return;
     }
+
+    setIsAuraSpeaking(true);
+    // Remove markdown for cleaner speech
+    const cleanText = text.replace(/[*_#`]/g, '');
+    
+    VieneuService.getInstance().speak(
+      cleanText,
+      (vol) => setTtsVolume(vol),
+      () => {
+        setIsAuraSpeaking(false);
+        setTtsVolume(0);
+      }
+    );
   };
 
   const decodeBase64 = (base64: string) => {
@@ -259,6 +249,9 @@ const ChatbotPanel: React.FC<ChatbotPanelProps> = ({ onClose }) => {
         role: 'model', 
         parts: [{ text: responseText }] 
       }]);
+
+      // TỰ ĐỘNG PHÁT ÂM (OFFLINE TTS)
+      speakText(responseText);
     } catch (err: any) {
       setMessages(prev => [...prev, { 
         role: 'model', 
@@ -363,10 +356,9 @@ const ChatbotPanel: React.FC<ChatbotPanelProps> = ({ onClose }) => {
                         {msg.role === 'model' && (
                           <button 
                             onClick={() => speakText(part.text)}
-                            disabled={isSpeaking}
-                            className={`absolute -right-12 top-0 p-3 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all hover:bg-indigo-50 hover:text-indigo-600 ${isSpeaking ? 'opacity-50 cursor-not-allowed' : 'opacity-0 group-hover:opacity-100'}`}
+                            className={`absolute -right-12 top-0 p-3 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all hover:bg-indigo-50 hover:text-indigo-600 ${isAuraSpeaking ? 'opacity-100 ring-2 ring-indigo-500' : 'opacity-0 group-hover:opacity-100'}`}
                           >
-                            <svg className={`w-5 h-5 ${isSpeaking ? 'animate-pulse text-indigo-500' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                            <svg className={`w-5 h-5 ${isAuraSpeaking ? 'animate-pulse text-indigo-500' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
                           </button>
                         )}
                       </div>

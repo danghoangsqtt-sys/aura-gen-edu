@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import Live2DAvatar from './Live2DAvatar';
 import { EyeState, AppMode } from '../types'; 
-import { useGeminiLive } from '../hooks/useGeminiLive';
 import AuraLiveChat from './AuraLiveChat';
 import { useAuraStore } from '../store/useAuraStore';
+import { useAuraLocalVoice } from '../hooks/useAuraLocalVoice';
 
 interface FloatingAuraProps {
     isCinematic?: boolean;
@@ -18,8 +18,28 @@ const FloatingAura: React.FC<FloatingAuraProps> = ({ isCinematic, onExitCinemati
   const [showMenu, setShowMenu] = useState(false);
   const [isLiveChatOpen, setIsLiveChatOpen] = useState(false);
   
-  const { currentMode, setCurrentMode, isLiveVoice, setIsLiveVoice } = useAuraStore();
-  const { connect, disconnect, connected, volume, isSpeaking, messages } = useGeminiLive();
+  const { 
+    currentMode, 
+    setCurrentMode, 
+    isLiveVoice, 
+    setIsLiveVoice,
+    ttsVolume,
+    isAuraSpeaking: isStoreSpeaking
+  } = useAuraStore();
+
+  const { 
+    connect, 
+    disconnect, 
+    connected, 
+    volume: liveVolume, 
+    isSpeaking: isLiveSpeaking, 
+    messages,
+    isThinking
+  } = useAuraLocalVoice();
+
+  // Volume: use liveVolume if connected, otherwise use fallback ttsVolume
+  const displayVolume = connected ? liveVolume : (ttsVolume / 100);
+  const isActuallySpeaking = isLiveSpeaking || isStoreSpeaking;
 
   const handleLiveVoice = () => {
     console.info('[FloatingAura] -> [Action]: Activating Live Voice');
@@ -91,23 +111,23 @@ const FloatingAura: React.FC<FloatingAuraProps> = ({ isCinematic, onExitCinemati
         className="w-full h-full cursor-pointer drop-shadow-[0_10px_25px_rgba(0,0,0,0.3)] hover:scale-105 transition-transform relative z-10" 
         onClick={() => currentMode !== 'speaking_room' && setShowMenu(!showMenu)}
       >
-        {/* Audio Visualizer (Live Voice Active) */}
-        {isLiveVoice && connected && (
+        {/* Audio Visualizer */}
+        {(isLiveVoice || isStoreSpeaking) && (
           <div className="absolute top-1/2 -left-12 -translate-y-1/2 flex items-center gap-1 bg-slate-900/50 p-2 rounded-full backdrop-blur-sm z-20 pointer-events-none transition-all duration-300">
-            <div className="w-1.5 bg-green-400 rounded-full animate-pulse" style={{ height: `${Math.max(10, (volume * 100) || 20)}px`, transition: 'height 0.1s' }}></div>
-            <div className="w-1.5 bg-green-400 rounded-full animate-pulse delay-75" style={{ height: `${Math.max(15, ((volume * 100) || 30) * 0.8)}px`, transition: 'height 0.1s' }}></div>
-            <div className="w-1.5 bg-green-400 rounded-full animate-pulse delay-150" style={{ height: `${Math.max(12, ((volume * 100) || 25) * 0.9)}px`, transition: 'height 0.1s' }}></div>
+            <div className="w-1.5 bg-green-400 rounded-full animate-pulse" style={{ height: `${Math.max(10, (displayVolume * 100) || 20)}px`, transition: 'height 0.1s' }}></div>
+            <div className="w-1.5 bg-green-400 rounded-full animate-pulse delay-75" style={{ height: `${Math.max(15, ((displayVolume * 100) || 30) * 0.8)}px`, transition: 'height 0.1s' }}></div>
+            <div className="w-1.5 bg-green-400 rounded-full animate-pulse delay-150" style={{ height: `${Math.max(12, ((displayVolume * 100) || 25) * 0.9)}px`, transition: 'height 0.1s' }}></div>
           </div>
         )}
 
         <Live2DAvatar 
-          state={isSpeaking ? EyeState.SPEAKING : EyeState.IDLE} 
+          state={isActuallySpeaking ? EyeState.SPEAKING : EyeState.IDLE} 
           mode={connected ? AppMode.VOICE : AppMode.CHAT} 
-          volume={volume} 
+          volume={displayVolume} 
         />
         
         {/* Subtle Outer Glow */}
-        <div className={`absolute inset-0 bg-indigo-500/20 blur-[60px] rounded-full z-[-1] transition-opacity duration-1000 ${isSpeaking ? 'opacity-100 scale-125' : 'opacity-30'}`}></div>
+        <div className={`absolute inset-0 bg-indigo-500/20 blur-[60px] rounded-full z-[-1] transition-opacity duration-1000 ${isActuallySpeaking ? 'opacity-100 scale-125' : 'opacity-30'}`}></div>
       </div>
 
       {/* Disconnect Button (Visible when connected) */}
@@ -121,12 +141,15 @@ const FloatingAura: React.FC<FloatingAuraProps> = ({ isCinematic, onExitCinemati
         </button>
       )}
 
-      {/* Transcript Overlay - Disabled during Live Voice for clean UI as requested */}
-      {isLiveChatOpen && !isLiveVoice && (
+      {/* Transcript Overlay - Now enabled during Live Voice for feedback */}
+      {(isLiveChatOpen || isLiveVoice) && (
         <AuraLiveChat 
             messages={messages} 
-            isAuraSpeaking={isSpeaking}
-            onClose={() => setIsLiveChatOpen(false)}
+            isAuraSpeaking={isActuallySpeaking}
+            onClose={() => {
+                if (isLiveVoice) handleDisconnect();
+                setIsLiveChatOpen(false);
+            }}
         />
       )}
     </div>

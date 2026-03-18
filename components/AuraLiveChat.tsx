@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ChatMessage } from '../hooks/useGeminiLive';
+import { ChatMessage } from '../hooks/useAuraLocalVoice';
 
 interface AuraLiveChatProps {
     messages: ChatMessage[];
