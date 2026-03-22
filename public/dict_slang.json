@@ -1,0 +1,72 @@
+{
+  "f": {
+    "flex": {
+      "vocabulary": "flex",
+      "ipa": "/fleks/",
+      "details": [{ "pos": "verb (slang)", "means": [{ "mean": "khoe khoang, phô trương (thường là tài sản hoặc thành tích)", "example": "He bought a new supercar just to flex on his friends." }] }]
+    },
+    "fam": {
+      "vocabulary": "fam",
+      "ipa": "/fæm/",
+      "details": [{ "pos": "noun (slang)", "means": [{ "mean": "gia đình, bạn bè thân thiết", "example": "What's up, fam? Long time no see." }] }]
+    }
+  },
+  "g": {
+    "ghost": {
+      "vocabulary": "ghost",
+      "ipa": "/ɡəʊst/",
+      "details": [{ "pos": "verb (slang)", "means": [{ "mean": "bơ tin nhắn, cắt đứt liên lạc đột ngột không lý do", "example": "We went on three dates, and then she completely ghosted me." }] }]
+    },
+    "goat": {
+      "vocabulary": "GOAT",
+      "ipa": "/ɡəʊt/",
+      "details": [{ "pos": "noun (acronym)", "means": [{ "mean": "viết tắt của 'Greatest Of All Time' (Đỉnh nhất mọi thời đại)", "example": "Messi is considered by many to be the GOAT of football." }] }]
+    },
+    "glow up": {
+      "vocabulary": "glow up",
+      "ipa": "/ɡləʊ ʌp/",
+      "details": [{ "pos": "noun/verb (slang)", "means": [{ "mean": "sự lột xác, trở nên đẹp hơn hoặc thành công hơn", "example": "She had a major glow up over the summer." }] }]
+    }
+  },
+  "s": {
+    "salty": {
+      "vocabulary": "salty",
+      "ipa": "/ˈsɒl.ti/",
+      "details": [{ "pos": "adjective (slang)", "means": [{ "mean": "cay cú, bực tức, cay bĩu (vì thua cuộc hoặc ghen tị)", "example": "He got so salty after losing the video game." }] }]
+    },
+    "shook": {
+      "vocabulary": "shook",
+      "ipa": "/ʃʊk/",
+      "details": [{ "pos": "adjective (slang)", "means": [{ "mean": "bị sốc, ngạc nhiên tột độ", "example": "I was completely shook by the news." }] }]
+    },
+    "slay": {
+      "vocabulary": "slay",
+      "ipa": "/sleɪ/",
+      "details": [{ "pos": "verb (slang)", "means": [{ "mean": "làm cực tốt, trông cực đẹp", "example": "You absolutely slayed that performance!" }] }]
+    },
+    "stan": {
+      "vocabulary": "stan",
+      "ipa": "/stæn/",
+      "details": [{ "pos": "noun/verb (slang)", "means": [{ "mean": "fan cuồng, hâm mộ cuồng nhiệt", "example": "I've been a stan of this band since their first album." }] }]
+    },
+    "sus": {
+      "vocabulary": "sus",
+      "ipa": "/sʌs/",
+      "details": [{ "pos": "adjective (slang)", "means": [{ "mean": "đáng nghi, khả nghi (viết tắt của suspicious)", "example": "That guy's behavior is a bit sus, don't you think?" }] }]
+    }
+  },
+  "t": {
+    "tea": {
+      "vocabulary": "tea",
+      "ipa": "/tiː/",
+      "details": [{ "pos": "noun (slang)", "means": [{ "mean": "chuyện phiếm, tin đồn hóng hớt", "example": "What's the tea? Tell me everything!" }] }]
+    }
+  },
+  "v": {
+    "vibe": {
+      "vocabulary": "vibe",
+      "ipa": "/vaɪb/",
+      "details": [{ "pos": "noun/verb (slang)", "means": [{ "mean": "bầu không khí, cảm giác, năng lượng", "example": "I'm really liking the vibe of this new cafe." }] }]
+    }
+  }
+}

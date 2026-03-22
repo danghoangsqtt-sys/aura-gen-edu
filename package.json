@@ -35,7 +35,7 @@
     "wait-on": "^9.0.4"
   },
   "dependencies": {
-    "@google/genai": "^1.35.0",
+    "@google/genai": "^1.46.0",
     "@xyflow/react": "^12.10.1",
     "appwrite": "^17.0.2",
     "lucide-react": "^0.378.0",

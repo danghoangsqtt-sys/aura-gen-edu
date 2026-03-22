@@ -1,575 +1,401 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  ReactFlow, 
-  ReactFlowProvider, 
-  useNodesState, 
-  useEdgesState, 
-  addEdge, 
-  Connection, 
-  Edge, 
-  Node,
-  Background,
-  Controls,
-  Panel,
-  useReactFlow,
-  getOutgoers
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { v4 as uuidv4 } from 'uuid';
-import { SavedWord, PersonalVocabData, MindMapTopic, MindMapData } from '../../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { SavedWord, PersonalVocabData, VocabFolder } from '../../types';
 import { canvasStorage } from '../../services/localDataService';
-import { cloudSyncService } from '../../services/cloudSyncService';
-import { account } from '../../services/appwriteConfig';
-import { extractVocabFromText } from '../../services/geminiService';
-import MindMapNode from './MindMapNode';
+import { OllamaService } from '../../services/ollamaService';
+import { Volume2, Trash2, FolderPlus, Folder, FolderOpen, Search, Inbox, BookOpen, X, Check, Edit3 } from 'lucide-react';
 
-// Define custom node types
-const nodeTypes = {
-  mindmap: MindMapNode,
-};
-
-const VocabBankCanvasContent: React.FC = () => {
-  const [data, setData] = useState<PersonalVocabData>({ inbox: [], folders: [], topics: [] });
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+const VocabBankCanvas: React.FC = () => {
+  const [data, setData] = useState<PersonalVocabData>({ inbox: [], folders: [] });
   const [loading, setLoading] = useState(true);
-  
-  // React Flow States
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  
-  // Sync States
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Scanner States
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [scannedText, setScannedText] = useState('');
   const [isScanning, setIsScanning] = useState(false);
-  const [draggedWord, setDraggedWord] = useState<SavedWord | null>(null);
 
-  // Load Data
+  // Inline input states (replaces prompt/confirm which aren't supported in Electron)
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2500);
+  };
+
+  // Load data
   useEffect(() => {
     const load = async () => {
-      console.group('[VocabBankCanvas:Init]');
-      let currentUserId = userId;
-      
-      try {
-        const user = await account.get();
-        setUserId(user.$id);
-        currentUserId = user.$id;
-        console.info(`Logged in as: ${user.email} (${user.$id})`);
-      } catch (err) {
-        console.warn('User not logged in, using guest mode (local only)');
-      }
-
-      // Try Cloud first
-      let savedData: PersonalVocabData | null = null;
-      if (currentUserId) {
-        savedData = await cloudSyncService.loadMindmapData(currentUserId);
-      }
-
-      if (!savedData) {
-        console.info('No cloud data found, falling back to local');
-        savedData = await canvasStorage.get();
-      }
-
+      const savedData = await canvasStorage.get();
       setData(savedData);
-      
-      if (savedData.topics && savedData.topics.length > 0) {
-        const firstTopic = savedData.topics[0];
-        setActiveTopicId(firstTopic.id);
-        setNodes(firstTopic.data.nodes || []);
-        setEdges(firstTopic.data.edges || []);
-      } else {
-        // Create initial topic if none exists
-        const initialTopicId = uuidv4();
-        const initialNodes: Node[] = [{
-          id: 'root',
-          type: 'mindmap',
-          data: { label: 'Chủ đề mới', isRoot: true },
-          position: { x: 0, y: 0 },
-        }];
-        const initialTopic: MindMapTopic = {
-          id: initialTopicId,
-          name: 'Chủ đề mới',
-          data: { nodes: initialNodes, edges: [] }
-        };
-        const newData = { ...savedData, topics: [initialTopic] };
-        setData(newData);
-        setActiveTopicId(initialTopicId);
-        setNodes(initialNodes);
-        await canvasStorage.save(newData);
-      }
       setLoading(false);
-      console.groupEnd();
     };
     load();
-  }, [setNodes, setEdges]);
+  }, []);
 
-  // Sync React Flow state to Data and Storage
-  useEffect(() => {
-    if (loading || !activeTopicId) return;
-
-    const syncState = async () => {
-      console.group('[VocabBankCanvas:Sync]');
-      const startTime = performance.now();
-      setSyncStatus('saving');
-      
-      try {
-        const updatedTopics = data.topics?.map(t => {
-          if (t.id === activeTopicId) {
-            return { ...t, data: { nodes, edges } };
-          }
-          return t;
-        }) || [];
-
-        const newData = { ...data, topics: updatedTopics };
-        setData(newData);
-        
-        // Local Save
-        await canvasStorage.save(newData);
-        
-        // Cloud Save (Debounced entry point)
-        if (userId) {
-          await cloudSyncService.saveMindmapData(userId, newData);
-          setSyncStatus('saved');
-        } else {
-          setSyncStatus('idle');
-        }
-        
-        const duration = performance.now() - startTime;
-        console.info(`Synced ${nodes.length} nodes and ${edges.length} edges in ${duration.toFixed(2)}ms`);
-      } catch (err) {
-        console.error('Sync failed:', err);
-        setSyncStatus('error');
-      } finally {
-        console.groupEnd();
-      }
-    };
-
-    // Debounce sync to Cloud (2000ms as requested)
-    const timer = setTimeout(syncState, 2000);
-    return () => clearTimeout(timer);
-  }, [nodes, edges, activeTopicId, loading, userId]);
-
-  // Topic Management
-  const createTopic = async () => {
-    const name = window.prompt("Nhập tên chủ đề mới:");
-    if (!name) return;
-
-    const newId = uuidv4();
-    const newNodes: Node[] = [{
-      id: 'root',
-      type: 'mindmap',
-      data: { label: name, isRoot: true },
-      position: { x: 0, y: 0 },
-    }];
-    const newTopic: MindMapTopic = {
-      id: newId,
-      name,
-      data: { nodes: newNodes, edges: [] }
-    };
-
-    const newData = { ...data, topics: [...(data.topics || []), newTopic] };
+  // Persist
+  const persist = useCallback(async (newData: PersonalVocabData) => {
     setData(newData);
-    setActiveTopicId(newId);
-    setNodes(newNodes);
-    setEdges([]);
     await canvasStorage.save(newData);
+  }, []);
+
+  // Folder management — no prompt(), uses inline inputs
+  const createFolder = () => {
+    if (!newFolderName.trim()) return;
+    const folder: VocabFolder = {
+      id: `folder_${Date.now()}`,
+      name: newFolderName.trim(),
+      words: [],
+      color: ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4'][Math.floor(Math.random() * 6)],
+    };
+    persist({ ...data, folders: [...(data.folders || []), folder] });
+    setNewFolderName('');
+    setShowNewFolder(false);
+    showToast(`Đã tạo thư mục "${folder.name}"`);
   };
 
-  const switchTopic = (id: string) => {
-    console.group(`[VocabBankCanvas:SwitchTopic] -> ${id}`);
-    const topic = data.topics?.find(t => t.id === id);
-    if (topic) {
-      const startTime = performance.now();
-      setActiveTopicId(id);
-      setNodes(topic.data.nodes);
-      setEdges(topic.data.edges);
-      console.info(`Loaded topic "${topic.name}" in ${(performance.now() - startTime).toFixed(2)}ms`);
+  const confirmRename = (id: string) => {
+    if (!renameValue.trim()) return;
+    const updated = (data.folders || []).map(f => f.id === id ? { ...f, name: renameValue.trim() } : f);
+    persist({ ...data, folders: updated });
+    setRenamingFolderId(null);
+    setRenameValue('');
+  };
+
+  const confirmDeleteFolder = (id: string) => {
+    const folder = (data.folders || []).find(f => f.id === id);
+    const wordsToInbox = folder?.words || [];
+    const newFolders = (data.folders || []).filter(f => f.id !== id);
+    persist({ ...data, folders: newFolders, inbox: [...wordsToInbox, ...data.inbox] });
+    if (activeFolder === id) setActiveFolder(null);
+    setDeletingFolderId(null);
+    showToast(`Đã xóa thư mục, từ vựng chuyển về Inbox`);
+  };
+
+  const deleteWord = (wordId: string) => {
+    if (activeFolder) {
+      const updated = (data.folders || []).map(f => {
+        if (f.id === activeFolder) return { ...f, words: f.words.filter(w => w.id !== wordId) };
+        return f;
+      });
+      persist({ ...data, folders: updated });
     } else {
-      console.error('Topic constant not found for ID:', id);
-    }
-    console.groupEnd();
-  };
-
-  const deleteTopic = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm("Bạn có chắc chắn muốn xóa toàn bộ chủ đề này?")) return;
-    
-    const newTopics = data.topics?.filter(t => t.id !== id) || [];
-    const newData = { ...data, topics: newTopics };
-    setData(newData);
-    await canvasStorage.save(newData);
-    
-    if (activeTopicId === id) {
-        if (newTopics.length > 0) {
-            switchTopic(newTopics[0].id);
-        } else {
-            setActiveTopicId(null);
-            setNodes([]);
-            setEdges([]);
-        }
+      persist({ ...data, inbox: data.inbox.filter(w => w.id !== wordId) });
     }
   };
 
-  const saveAll = async () => {
-    const updatedTopics = data.topics?.map(t => {
-        if (t.id === activeTopicId) {
-            return { ...t, data: { nodes, edges } };
+  const moveWordToFolder = (wordId: string, targetFolderId: string | null) => {
+    let word: SavedWord | undefined;
+    let newInbox = [...data.inbox];
+    let newFolders = (data.folders || []).map(f => ({ ...f, words: [...f.words] }));
+
+    const inboxIdx = newInbox.findIndex(w => w.id === wordId);
+    if (inboxIdx >= 0) {
+      word = newInbox[inboxIdx];
+      newInbox.splice(inboxIdx, 1);
+    } else {
+      for (const f of newFolders) {
+        const idx = f.words.findIndex(w => w.id === wordId);
+        if (idx >= 0) {
+          word = f.words[idx];
+          f.words.splice(idx, 1);
+          break;
         }
-        return t;
-    }) || [];
-    const newData = { ...data, topics: updatedTopics };
-    setData(newData);
-    await canvasStorage.save(newData);
-    alert("Đã lưu toàn bộ tiến độ!");
+      }
+    }
+    if (!word) return;
+
+    if (targetFolderId === null) {
+      newInbox = [word, ...newInbox];
+    } else {
+      newFolders = newFolders.map(f => {
+        if (f.id === targetFolderId) return { ...f, words: [word!, ...f.words] };
+        return f;
+      });
+    }
+    persist({ ...data, inbox: newInbox, folders: newFolders });
+    const targetName = targetFolderId ? newFolders.find(f => f.id === targetFolderId)?.name || '' : 'Inbox';
+    showToast(`Đã di chuyển đến ${targetName}`);
   };
 
-  // Branching Logic
-  const handleAddChild = useCallback((parentId: string, direction: string) => {
-    setNodes((nds) => {
-      const parentNode = nds.find((n) => n.id === parentId);
-      if (!parentNode) return nds;
-
-      const id = uuidv4();
-      const offset = 250;
-      let x = parentNode.position.x;
-      let y = parentNode.position.y;
-
-      switch (direction) {
-        case 'top': y -= offset; break;
-        case 'bottom': y += offset; break;
-        case 'left': x -= offset; break;
-        case 'right': x += offset; break;
-      }
-
-      const newNode: Node = {
-        id,
-        type: 'mindmap',
-        data: { label: 'Chi nhánh mới', onAddChild: handleAddChild, onChange: handleNodeLabelChange },
-        position: { x, y },
-      };
-
-      setEdges((eds) => addEdge({
-        id: `e-${parentId}-${id}`,
-        source: parentId,
-        target: id,
-        type: 'smoothstep',
-        animated: true,
-        style: { stroke: '#6366f1', strokeWidth: 3 },
-      }, eds));
-
-      return [...nds, newNode];
-    });
-  }, [setNodes, setEdges]);
-
-  const handleNodeLabelChange = useCallback((id: string, label: string) => {
-    setNodes((nds) => 
-      nds.map((node) => {
-        if (node.id === id) {
-          return { ...node, data: { ...node.data, label } };
-        }
-        return node;
-      })
-    );
-  }, [setNodes]);
-
-  const handleColorChange = useCallback((id: string, color: string) => {
-    setNodes((nds) => 
-      nds.map((node) => {
-        if (node.id === id) {
-          return { ...node, data: { ...node.data, color } };
-        }
-        return node;
-      })
-    );
-    // Sync edge colors for outgoing edges
-    setEdges((eds) => 
-      eds.map((edge) => {
-        if (edge.source === id) {
-          return { ...edge, style: { ...edge.style, stroke: color } };
-        }
-        return edge;
-      })
-    );
-  }, [setNodes, setEdges]);
-
-  // PRO: Recursive Cascading Delete
-  const { getNodes, getEdges } = useReactFlow();
-  const handleDeleteNode = useCallback((id: string) => {
-    const allNodes = getNodes();
-    const allEdges = getEdges();
-
-    const getChildIds = (nodeId: string): string[] => {
-      const children = allEdges
-        .filter((edge) => edge.source === nodeId)
-        .map((edge) => edge.target);
-      
-      let allChildIds = [...children];
-      for (const childId of children) {
-          allChildIds = [...allChildIds, ...getChildIds(childId)];
-      }
-      return allChildIds;
-    };
-
-    const idsToRemove = [id, ...getChildIds(id)];
-    
-    setNodes((nds) => nds.filter((n) => !idsToRemove.includes(n.id)));
-    setEdges((eds) => eds.filter((e) => !idsToRemove.includes(e.source) && !idsToRemove.includes(e.target)));
-  }, [getNodes, getEdges, setNodes, setEdges]);
-
-
-  // Inject functions into child nodes
-  const nodesWithCallbacks = useMemo(() => {
-    return nodes.map(node => ({
-        ...node,
-        data: { 
-            ...node.data, 
-            onAddChild: handleAddChild, 
-            onChange: handleNodeLabelChange,
-            onColorChange: handleColorChange,
-            onDeleteNode: handleDeleteNode
-        }
-    }));
-  }, [nodes, handleAddChild, handleNodeLabelChange, handleColorChange, handleDeleteNode]);
-
-  // AI Scanner Logic
+  // AI Scanner
   const handleScan = async () => {
     if (!scannedText.trim()) return;
     setIsScanning(true);
     try {
-      const extracted = await extractVocabFromText(scannedText);
+      const extracted = await OllamaService.extractVocabulary(scannedText);
       const newWords: SavedWord[] = extracted.map((item: any) => ({
-        id: `scan_${Date.now()}_${uuidv4().substring(0, 5)}`,
+        id: `scan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         word: item.word,
         meaning: item.meaning,
         ipa: item.ipa,
         partOfSpeech: item.pos,
         pronunciation: item.ipa
       }));
-
-      const newData = {
-        ...data,
-        inbox: [...newWords, ...data.inbox]
-      };
-      setData(newData);
-      await canvasStorage.save(newData);
+      persist({ ...data, inbox: [...newWords, ...data.inbox] });
       setScannedText('');
+      showToast(`Đã trích xuất ${newWords.length} từ vựng`);
     } catch (e: any) {
-      alert(e.message || "Lỗi AI không thể phân tích văn bản.");
+      showToast(e.message || "Lỗi AI");
     } finally {
       setIsScanning(false);
     }
   };
 
-  // Drag & Drop onto Canvas
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
+  // Get active words
+  const activeWords: SavedWord[] = activeFolder
+    ? ((data.folders || []).find(f => f.id === activeFolder)?.words || [])
+    : data.inbox;
 
-  const onDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    const wordDataStr = event.dataTransfer.getData('application/reactflow');
-    if (!wordDataStr) return;
+  const filteredWords = searchQuery
+    ? activeWords.filter(w => w.word.toLowerCase().includes(searchQuery.toLowerCase()) || w.meaning.toLowerCase().includes(searchQuery.toLowerCase()))
+    : activeWords;
 
-    const word = JSON.parse(wordDataStr) as SavedWord;
-    
-    // Calculate position relative to React Flow container
-    const reactFlowBounds = document.querySelector('.react-flow')?.getBoundingClientRect();
-    if (!reactFlowBounds) return;
-
-    const position = {
-        x: event.clientX - reactFlowBounds.left - 75,
-        y: event.clientY - reactFlowBounds.top - 25,
-    };
-
-    const newNode: Node = {
-      id: uuidv4(),
-      type: 'mindmap',
-      position,
-      data: { 
-        label: `${word.word} (${word.ipa})\n${word.meaning}`,
-        onAddChild: handleAddChild,
-        onChange: handleNodeLabelChange,
-        onDeleteNode: handleDeleteNode,
-        onColorChange: handleColorChange
-      },
-    };
-
-    console.group('[VocabBankCanvas:onDrop]');
-    console.info('Dropped Word:', word);
-    console.info('Canvas Position:', position);
-    setNodes((nds) => [...nds, newNode]);
-    
-    // Remove from inbox
-    const newInbox = data.inbox.filter(w => w.id !== word.id);
-    const newData = { ...data, inbox: newInbox };
-    setData(newData);
-    canvasStorage.save(newData); 
-    console.groupEnd();
-  }, [data.inbox, handleAddChild, handleNodeLabelChange, handleDeleteNode, handleColorChange, setNodes]);
+  const speak = (text: string) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  };
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-white rounded-[32px]">
-        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+      <div className="h-full flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
+  const activeFolderObj = (data.folders || []).find(f => f.id === activeFolder);
+  const totalWords = data.inbox.length + (data.folders || []).reduce((sum, f) => sum + f.words.length, 0);
+
   return (
-    <div className="flex h-full bg-slate-50 rounded-[32px] overflow-hidden font-sans border border-slate-100 shadow-2xl">
+    <div className="flex h-full bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-lg relative">
       
-      {/* Sidebar (30%) */}
-      <div className="w-[400px] border-r border-slate-200 flex flex-col bg-white z-20 shadow-xl overflow-hidden">
-        
-        {/* Topic Selector */}
-        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[4px] mb-4">Danh sách chủ đề</h3>
-            <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar mb-4">
-                {data.topics?.map(topic => (
-                    <div key={topic.id} className="relative group">
-                        <button 
-                            onClick={() => switchTopic(topic.id)}
-                            className={`w-full p-3 rounded-xl flex items-center justify-between transition-all font-bold text-[11px] uppercase tracking-wider
-                                ${activeTopicId === topic.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'}`}
-                        >
-                            <span>{topic.name}</span>
-                            {activeTopicId === topic.id && <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>}
-                        </button>
-                        <button 
-                            onClick={(e) => deleteTopic(topic.id, e)}
-                            title="Xóa chủ đề"
-                            className="absolute -right-2 -top-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                        >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                ))}
+      {/* Left: Word List */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {activeFolder ? (
+                <>
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: activeFolderObj?.color || '#6366f1' }}>
+                    <FolderOpen className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-800">{activeFolderObj?.name}</h3>
+                </>
+              ) : (
+                <>
+                  <div className="w-6 h-6 bg-indigo-600 rounded-lg flex items-center justify-center">
+                    <Inbox className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-800">Hộp thư (Inbox)</h3>
+                </>
+              )}
+              <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{activeWords.length} từ</span>
             </div>
-            <button 
-                onClick={createTopic}
-                className="w-full py-3 bg-white border-2 border-dashed border-indigo-200 text-indigo-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
-            >
-                + Chủ đề mới
-            </button>
+          </div>
+          
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Tìm từ vựng..."
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[12px] font-medium text-slate-700 outline-none focus:border-indigo-400 transition-all" />
+          </div>
         </div>
 
-        {/* AI Scanner */}
-        <div className="p-6 border-b border-slate-100 bg-slate-50/20">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[4px] mb-4">Quét văn bản AI</h3>
-            <textarea 
-                value={scannedText}
-                onChange={(e) => setScannedText(e.target.value)}
-                placeholder="Dán văn bản tiếng Anh vào đây..."
-                className="w-full h-32 p-4 bg-white border border-slate-200 rounded-2xl text-[13px] font-medium text-slate-700 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all resize-none mb-4"
-            />
-            <button 
-                onClick={handleScan}
-                disabled={isScanning || !scannedText.trim()}
-                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[3px] transition-all flex items-center justify-center gap-2 shadow-lg ${isScanning ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-indigo-600 transition-all'}`}
-            >
-                {isScanning ? "Đang xử lý..." : "Trích xuất từ vựng"}
+        {/* AI Scanner (collapsible) */}
+        <details className="border-b border-slate-100">
+          <summary className="px-4 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:bg-slate-50 select-none flex items-center gap-2">
+            ✨ Quét văn bản AI
+          </summary>
+          <div className="px-4 pb-3">
+            <textarea value={scannedText} onChange={e => setScannedText(e.target.value)}
+              placeholder="Dán văn bản tiếng Anh vào đây..."
+              className="w-full h-20 p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 outline-none focus:border-indigo-400 resize-none mb-2" />
+            <button onClick={handleScan} disabled={isScanning || !scannedText.trim()}
+              className={`w-full py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${isScanning ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}>
+              {isScanning ? "Đang xử lý..." : "Trích xuất từ vựng"}
             </button>
-        </div>
+          </div>
+        </details>
 
-        {/* Inbox */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-50/10">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[4px] px-2 mb-2">Hộp thư (Inbox)</h3>
-          {data.inbox.length === 0 ? (
-            <p className="text-[10px] text-center text-slate-300 font-bold py-10">Kéo thả từ vựng vào sơ đồ</p>
+        {/* Word List */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+          {filteredWords.length === 0 ? (
+            <div className="text-center py-16">
+              <BookOpen className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+              <p className="text-[11px] font-bold text-slate-300">
+                {searchQuery ? 'Không tìm thấy kết quả' : 'Chưa có từ vựng nào'}
+              </p>
+            </div>
           ) : (
-            data.inbox.map(w => (
-              <div
-                key={w.id}
-                draggable
-                onDragStart={(e) => {
-                    e.dataTransfer.setData('application/reactflow', JSON.stringify(w));
-                    e.dataTransfer.effectAllowed = 'move';
-                }}
-                className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all hover:scale-[1.02] border-l-4 border-l-indigo-400"
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-black text-slate-800 uppercase">{w.word}</span>
-                  <span className="text-[8px] font-serif italic text-indigo-400">{w.ipa}</span>
+            filteredWords.map(w => (
+              <div key={w.id} className="group bg-white border border-slate-100 rounded-xl p-3 hover:border-indigo-200 hover:shadow-sm transition-all">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-black text-slate-800">{w.word}</span>
+                      {w.partOfSpeech && (
+                        <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded uppercase">{w.partOfSpeech}</span>
+                      )}
+                      <button onClick={() => speak(w.word)} className="opacity-0 group-hover:opacity-100 w-5 h-5 bg-slate-100 hover:bg-indigo-600 text-slate-400 hover:text-white rounded flex items-center justify-center transition-all" title="Nghe phát âm">
+                        <Volume2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] font-serif italic text-indigo-400 mb-0.5">{w.ipa}</p>
+                    <p className="text-[11px] font-medium text-slate-600 leading-relaxed">{w.meaning}</p>
+                    {w.example && (
+                      <p className="text-[10px] text-slate-400 italic mt-1 border-l-2 border-slate-100 pl-2">"{w.example}"</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <select className="text-[8px] font-bold text-slate-400 bg-slate-50 border border-slate-200 rounded px-1 py-0.5 outline-none cursor-pointer hover:border-indigo-300" value=""
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '__inbox__') moveWordToFolder(w.id, null);
+                        else if (val) moveWordToFolder(w.id, val);
+                      }} title="Di chuyển đến thư mục">
+                      <option value="">📁 Di chuyển</option>
+                      {activeFolder !== null && <option value="__inbox__">📥 Hộp thư</option>}
+                      {(data.folders || []).filter(f => f.id !== activeFolder).map(f => (
+                        <option key={f.id} value={f.id}>📂 {f.name}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => deleteWord(w.id)} className="w-full text-[8px] font-bold text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded px-1 py-0.5 transition-all flex items-center justify-center gap-0.5" title="Xóa">
+                      <Trash2 className="w-2.5 h-2.5" /> Xóa
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[10px] font-bold text-slate-500 truncate">{w.meaning}</p>
               </div>
             ))
           )}
         </div>
       </div>
 
-      {/* Main Mind Map Builder Area (70%) */}
-      <div className="flex-1 relative bg-white">
-        <ReactFlowProvider>
-          <ReactFlow
-            nodes={nodesWithCallbacks}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            nodeTypes={nodeTypes}
-            fitView
-            snapToGrid
-            snapGrid={[20, 20]}
-            defaultEdgeOptions={{ 
-                type: 'smoothstep', 
-                style: { stroke: '#6366f1', strokeWidth: 3 },
-                animated: true 
-            }}
-          >
-            <Background color="#f1f5f9" gap={20} />
-            <Controls className="!bg-white !border-slate-100 !shadow-2xl !rounded-xl overflow-hidden" />
-            <Panel position="top-right" className="flex items-center gap-3">
-                <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl border border-white shadow-xl flex items-center gap-3">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2">Mind Map Builder Cloud v4.5</p>
-                    <div className="h-4 w-[1px] bg-slate-100"></div>
-                    <div className="flex items-center gap-2 px-2">
-                        {syncStatus === 'saving' && (
-                            <>
-                                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-                                <span className="text-[8px] font-black text-amber-600 uppercase">Đang lưu...</span>
-                            </>
-                        )}
-                        {syncStatus === 'saved' && (
-                            <>
-                                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                                <span className="text-[8px] font-black text-emerald-600 uppercase">Đã đồng bộ</span>
-                            </>
-                        )}
-                        {syncStatus === 'error' && (
-                            <>
-                                <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
-                                <span className="text-[8px] font-black text-rose-600 uppercase">Lỗi Cloud</span>
-                            </>
-                        )}
-                    </div>
+      {/* Right: Folder Tree */}
+      <div className="w-[200px] border-l border-slate-100 bg-slate-50/30 flex flex-col">
+        <div className="p-3 border-b border-slate-100">
+          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">📂 Thư mục</h4>
+          
+          {showNewFolder ? (
+            <div className="flex items-center gap-1">
+              <input type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') setShowNewFolder(false); }}
+                placeholder="Tên thư mục..."
+                autoFocus
+                className="flex-1 px-2 py-1.5 border border-indigo-300 rounded-lg text-[10px] font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100" />
+              <button onClick={createFolder} className="w-6 h-6 bg-indigo-600 text-white rounded-md flex items-center justify-center hover:bg-indigo-700 transition-all" title="Tạo">
+                <Check className="w-3 h-3" />
+              </button>
+              <button onClick={() => { setShowNewFolder(false); setNewFolderName(''); }} className="w-6 h-6 bg-slate-200 text-slate-500 rounded-md flex items-center justify-center hover:bg-slate-300 transition-all" title="Hủy">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowNewFolder(true)}
+              className="w-full py-2 bg-white border-2 border-dashed border-indigo-200 text-indigo-600 rounded-lg font-black text-[9px] uppercase tracking-wider hover:bg-indigo-50 transition-all flex items-center justify-center gap-1.5">
+              <FolderPlus className="w-3 h-3" /> Tạo thư mục
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+          {/* Inbox */}
+          <button onClick={() => { setActiveFolder(null); setSearchQuery(''); }}
+            className={`w-full p-2.5 rounded-lg flex items-center gap-2 transition-all text-left ${
+              !activeFolder ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-white text-slate-600'
+            }`}>
+            <Inbox className="w-3.5 h-3.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-black block truncate">Hộp thư</span>
+              <span className={`text-[8px] font-bold ${!activeFolder ? 'text-indigo-200' : 'text-slate-400'}`}>{data.inbox.length} từ</span>
+            </div>
+          </button>
+
+          {/* Folders */}
+          {(data.folders || []).map(folder => (
+            <div key={folder.id} className="group relative">
+              {/* Delete confirmation overlay */}
+              {deletingFolderId === folder.id && (
+                <div className="absolute inset-0 z-10 bg-white/95 rounded-lg flex flex-col items-center justify-center p-2 border border-rose-200">
+                  <p className="text-[8px] font-bold text-rose-600 text-center mb-1.5">Xóa thư mục này?</p>
+                  <div className="flex gap-1">
+                    <button onClick={() => confirmDeleteFolder(folder.id)} className="px-2 py-1 bg-rose-500 text-white rounded text-[8px] font-bold hover:bg-rose-600" title="Xác nhận xóa">Xóa</button>
+                    <button onClick={() => setDeletingFolderId(null)} className="px-2 py-1 bg-slate-200 text-slate-600 rounded text-[8px] font-bold hover:bg-slate-300" title="Hủy">Hủy</button>
+                  </div>
                 </div>
-                <button 
-                    onClick={saveAll}
-                    className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-100 hover:scale-105 transition-transform"
-                >
-                    💾 Lưu toàn bộ
+              )}
+
+              {/* Rename mode */}
+              {renamingFolderId === folder.id ? (
+                <div className="flex items-center gap-1 p-1.5">
+                  <input type="text" value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') confirmRename(folder.id); if (e.key === 'Escape') setRenamingFolderId(null); }}
+                    autoFocus
+                    className="flex-1 px-1.5 py-1 border border-indigo-300 rounded text-[9px] font-bold text-slate-700 outline-none min-w-0" />
+                  <button onClick={() => confirmRename(folder.id)} className="w-5 h-5 bg-indigo-600 text-white rounded flex items-center justify-center" title="Lưu">
+                    <Check className="w-2.5 h-2.5" />
+                  </button>
+                  <button onClick={() => setRenamingFolderId(null)} className="w-5 h-5 bg-slate-200 text-slate-500 rounded flex items-center justify-center" title="Hủy">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => { setActiveFolder(folder.id); setSearchQuery(''); }}
+                  className={`w-full p-2.5 rounded-lg flex items-center gap-2 transition-all text-left ${
+                    activeFolder === folder.id ? 'bg-white shadow-md border border-slate-200' : 'hover:bg-white text-slate-600'
+                  }`}>
+                  <div className="w-3.5 h-3.5 rounded shrink-0 flex items-center justify-center" style={{ background: folder.color || '#6366f1' }}>
+                    {activeFolder === folder.id ? <FolderOpen className="w-2.5 h-2.5 text-white" /> : <Folder className="w-2.5 h-2.5 text-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-[10px] font-black block truncate ${activeFolder === folder.id ? 'text-slate-800' : ''}`}>{folder.name}</span>
+                    <span className="text-[8px] font-bold text-slate-400">{folder.words.length} từ</span>
+                  </div>
                 </button>
-            </Panel>
-          </ReactFlow>
-        </ReactFlowProvider>
+              )}
+
+              {/* Actions */}
+              {renamingFolderId !== folder.id && deletingFolderId !== folder.id && (
+                <div className="absolute right-1 top-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => { setRenamingFolderId(folder.id); setRenameValue(folder.name); }}
+                    className="w-5 h-5 text-slate-300 hover:text-indigo-600 rounded flex items-center justify-center transition-all" title="Đổi tên">
+                    <Edit3 className="w-2.5 h-2.5" />
+                  </button>
+                  <button onClick={() => setDeletingFolderId(folder.id)}
+                    className="w-5 h-5 text-slate-300 hover:text-rose-600 rounded flex items-center justify-center transition-all" title="Xóa">
+                    <Trash2 className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Stats */}
+        <div className="p-3 border-t border-slate-100 text-center">
+          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+            {totalWords} từ tổng cộng
+          </p>
+        </div>
       </div>
 
+      {/* Toast */}
+      {toast && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2 rounded-full shadow-2xl z-50 animate-in slide-in-from-bottom-3 duration-200">
+          <span className="text-[10px] font-bold">✅ {toast}</span>
+        </div>
+      )}
     </div>
   );
-};
-
-const VocabBankCanvas: React.FC = () => {
-    return (
-        <ReactFlowProvider>
-            <VocabBankCanvasContent />
-        </ReactFlowProvider>
-    );
 };
 
 export default VocabBankCanvas;

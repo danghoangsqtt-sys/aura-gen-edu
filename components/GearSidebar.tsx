@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-type TabKey = 'create' | 'library' | 'game' | 'chatbot' | 'settings' | 'dictionary' | 'speaking' | 'story' | 'ipa' | 'writing';
+type TabKey = 'home' | 'create' | 'library' | 'game' | 'chatbot' | 'settings' | 'dictionary' | 'speaking' | 'story' | 'ipa' | 'writing';
 
 interface NavItem {
   key: TabKey;
@@ -10,19 +10,19 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { key: 'home',       label: 'Trang Chủ',    emoji: '🏠', color: 'from-blue-600 to-indigo-600' },
   { key: 'create',     label: 'Soạn đề',     emoji: '✏️', color: 'from-indigo-500 to-blue-500' },
   { key: 'library',    label: 'Thư viện',     emoji: '📚', color: 'from-violet-500 to-purple-500' },
+  { key: 'game',       label: 'Arena',        emoji: '⚡', color: 'from-red-500 to-orange-500' },
   { key: 'story',      label: 'Truyện Chêm',  emoji: '📝', color: 'from-pink-500 to-rose-500' },
   { key: 'dictionary', label: 'Từ điển',      emoji: '🔤', color: 'from-amber-500 to-orange-500' },
   { key: 'speaking',   label: 'Speaking',     emoji: '🎤', color: 'from-emerald-500 to-green-500' },
   { key: 'ipa',        label: 'IPA Master',   emoji: '🔬', color: 'from-teal-500 to-cyan-500' },
   { key: 'writing',    label: 'Luyện Viết',   emoji: '✍️', color: 'from-fuchsia-500 to-purple-500' },
-  { key: 'chatbot',    label: 'Gia sư AI',    emoji: '🤖', color: 'from-blue-500 to-indigo-500' },
-  { key: 'game',       label: 'Arena',        emoji: '⚡', color: 'from-red-500 to-orange-500' },
   { key: 'settings',   label: 'Cài đặt',     emoji: '⚙️', color: 'from-slate-500 to-gray-500' },
 ];
 
-const RADIUS = 260;
+const RADIUS = 200;
 const START_ANGLE = -80;
 const END_ANGLE = 80;
 
@@ -50,13 +50,13 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
     <>
       {/* Focus Mode Backdrop */}
       <div
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[40] transition-all duration-300 no-print ${
+        className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[998] transition-all duration-300 no-print ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setIsOpen(false)}
       />
 
-      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-[50] no-print">
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-[999] no-print shadow-2xl">
 
       {/* Menu items */}
       {NAV_ITEMS.map((item, index) => {
@@ -70,8 +70,8 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
             className="absolute left-0 top-1/2"
             style={{
               transform: isOpen
-                ? `translate(${pos.x + 36}px, ${pos.y - 28}px)`
-                : 'translate(0px, -28px)',
+                ? `translate(${pos.x + 32}px, ${pos.y - 22}px)`
+                : 'translate(0px, -22px)',
               opacity: isOpen ? 1 : 0,
               transition: `all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${isOpen ? delay : (itemCount - index) * 30}ms`,
               pointerEvents: isOpen ? 'auto' : 'none',
@@ -80,10 +80,9 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
             <button
               onClick={() => { onTabChange(item.key); setIsOpen(false); }}
               className="group relative flex items-center"
-              title={item.label}
             >
               <div className={`
-                w-14 h-14 rounded-full flex items-center justify-center text-2xl
+                w-11 h-11 rounded-full flex items-center justify-center text-xl
                 shadow-lg transition-all duration-200 border-2
                 ${isActive
                   ? `bg-gradient-to-br ${item.color} text-white border-white scale-110 shadow-xl`
@@ -93,10 +92,10 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
                 {item.emoji}
               </div>
               <span className={`
-                absolute left-16 whitespace-nowrap text-sm font-semibold tracking-wider
-                px-3 py-1.5 rounded-xl transition-all duration-200 shadow-md
-                opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0
-                ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-white'}
+                absolute left-14 whitespace-nowrap text-[9px] font-black uppercase tracking-[1.5px]
+                px-3 py-1.5 rounded-xl transition-all duration-300 shadow-xl z-[100]
+                opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-4
+                ${isActive ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-slate-900/90 text-white backdrop-blur-md'}
               `}>
                 {item.label}
               </span>
@@ -109,18 +108,18 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          relative w-14 h-14 rounded-r-2xl rounded-l-none
+          relative w-11 h-11 rounded-r-xl rounded-l-none
           bg-gradient-to-br from-indigo-600 to-violet-600
-          text-white shadow-2xl shadow-indigo-300
+          text-white shadow-xl shadow-indigo-200
           flex items-center justify-center
           transition-all duration-500 ease-out
-          hover:shadow-indigo-400
-          ${isOpen ? 'translate-x-0' : '-translate-x-1'}
+          hover:shadow-indigo-300
+          ${isOpen ? 'translate-x-0' : '-translate-x-0.5'}
         `}
         title="Menu"
       >
         <svg
-          className={`w-7 h-7 transition-transform duration-500 ${isOpen ? 'rotate-180' : 'rotate-0'}`}
+          className={`w-5 h-5 transition-transform duration-500 ${isOpen ? 'rotate-180' : 'rotate-0'}`}
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -131,12 +130,7 @@ const GearSidebar: React.FC<GearSidebarProps> = ({ activeTab, onTabChange }) => 
         </svg>
       </button>
 
-      {/* App Version */}
-      <div className="fixed left-4 bottom-4 z-[50] no-print">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[4px] opacity-50">
-          Aura Local AI v1.0
-        </span>
-      </div>
+
     </div>
     </>
   );

@@ -3,11 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { Question, LeaderboardEntry, ExamPaper } from '../types';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
 import QuizMode from './QuizMode';
+import GameRules from './GameRules';
 import ScrambleMode from './ScrambleMode';
 import BlitzMode from './BlitzMode';
 import SurvivalMode from './SurvivalMode';
+import TugOfWarMode from './TugOfWarMode';
+import CrosswordMode from './CrosswordMode';
+import DigDuelMode from './DigDuelMode';
+import GoldMinerMode from './GoldMinerMode';
 
-type GameMode = 'quiz' | 'scramble' | 'blitz' | 'survival';
+type GameMode = 'quiz' | 'scramble' | 'blitz' | 'survival' | 'tugofwar' | 'crossword' | 'digduel' | 'goldminer';
 
 interface GameCenterProps {
   initialQuestions: Question[];
@@ -18,7 +23,7 @@ interface GameCenterProps {
 const GameCenter: React.FC<GameCenterProps> = ({ initialQuestions, initialExamTitle, examList }) => {
   const [activeQuestions, setActiveQuestions] = useState<Question[]>(initialQuestions);
   const [activeTitle, setActiveTitle] = useState(initialExamTitle);
-  const [gameState, setGameState] = useState<'selection' | 'lobby' | 'playing' | 'result'>('selection');
+  const [gameState, setGameState] = useState<'selection' | 'lobby' | 'rules' | 'playing' | 'result'>('selection');
   const [selectedMode, setSelectedMode] = useState<GameMode>('quiz');
   const [playerName, setPlayerName] = useState('');
   const [lastGameResult, setLastGameResult] = useState<{score: number, streak: number} | null>(null);
@@ -74,13 +79,23 @@ const GameCenter: React.FC<GameCenterProps> = ({ initialQuestions, initialExamTi
       return;
     }
     setSelectedMode(mode);
-    setGameState('playing');
+    setGameState('rules');
   };
+
+  if (gameState === 'rules') {
+    return (
+      <GameRules 
+        mode={selectedMode} 
+        onStart={() => setGameState('playing')} 
+        onBack={() => setGameState('lobby')} 
+      />
+    );
+  }
 
   if (gameState === 'selection') {
     return (
       <div className="h-full bg-slate-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-xl bg-white rounded-[32px] shadow-xl p-6 border border-slate-100 animate-in fade-in zoom-in duration-300">
+        <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-5 border border-slate-100 animate-in fade-in zoom-in duration-300">
           <div className="text-center mb-6">
             <h2 className="text-lg font-black text-slate-800 uppercase tracking-widest">CHỌN NỘI DUNG THI ĐẤU</h2>
             <div className="h-1 w-10 bg-indigo-600 mx-auto mt-2 rounded-full"></div>
@@ -113,37 +128,41 @@ const GameCenter: React.FC<GameCenterProps> = ({ initialQuestions, initialExamTi
   if (gameState === 'lobby') {
     return (
       <div className="h-full bg-slate-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-[550px] bg-white rounded-[32px] shadow-2xl p-8 border border-slate-100 relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="w-full max-w-md bg-white rounded-xl shadow-md p-5 border border-slate-100 relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 z-0 opacity-50"></div>
           <button onClick={() => setGameState('selection')} className="relative z-10 p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors mb-4 flex items-center gap-2 group">
             <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
             <span className="text-[9px] font-black uppercase tracking-widest">Đổi đề</span>
           </button>
           
-          <div className="relative z-10 text-center mb-8">
-            <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-[4px] mb-3">Thông tin thí sinh</h3>
+          <div className="relative z-10 text-center mb-5">
+            <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-2.5">Thông tin thí sinh</h3>
             <div className={`max-w-xs mx-auto transition-all ${nameError ? 'animate-bounce' : ''}`}>
               <input 
                 type="text" 
-                className={`w-full bg-slate-50 border-2 p-3.5 rounded-2xl text-lg font-black text-center text-slate-700 outline-none transition-all shadow-inner ${nameError ? 'border-rose-500 bg-rose-50 placeholder-rose-300' : 'border-slate-100 focus:border-indigo-500 focus:bg-white'}`} 
+                className={`w-full bg-slate-50 border-2 p-2.5 rounded-xl text-sm font-bold text-center text-slate-700 outline-none transition-all shadow-inner ${nameError ? 'border-rose-500 bg-rose-50 placeholder-rose-300' : 'border-slate-100 focus:border-indigo-500 focus:bg-white'}`} 
                 value={playerName} 
                 onChange={e => { setPlayerName(e.target.value); if(nameError) setNameError(false); }} 
                 placeholder={nameError ? "Hãy nhập tên!" : "Tên của bạn..."} 
                 autoFocus
               />
-              {nameError && <p className="text-rose-500 text-[8px] font-black uppercase mt-2 animate-pulse">Vui lòng nhập danh tính trước khi xuất trận!</p>}
+              {nameError && <p className="text-rose-500 text-[8px] font-bold uppercase mt-1.5 animate-pulse">Vui lòng nhập danh tính trước khi xuất trận!</p>}
             </div>
           </div>
 
-          <div className="relative z-10 grid grid-cols-2 gap-4">
-            <GameModeBtn title="QUIZ" icon="🏆" onClick={() => startWithMode('quiz')} color="bg-indigo-600" desc="Thử thách tri thức" />
-            <GameModeBtn title="SCRAMBLE" icon="🧩" onClick={() => startWithMode('scramble')} color="bg-emerald-600" desc="Giải mã từ vựng" />
-            <GameModeBtn title="BLITZ" icon="⚡" onClick={() => startWithMode('blitz')} color="bg-amber-500" desc="Phản xạ tia chớp" />
-            <GameModeBtn title="SURVIVAL" icon="❤️" onClick={() => startWithMode('survival')} color="bg-rose-600" desc="Đấu trường sinh tồn" />
+          <div className="relative z-10 grid grid-cols-2 gap-3">
+            <GameModeBtn title="Quiz" icon="🏆" onClick={() => startWithMode('quiz')} color="bg-indigo-600" desc="Thử thách tri thức" />
+            <GameModeBtn title="Scramble" icon="🧩" onClick={() => startWithMode('scramble')} color="bg-emerald-600" desc="Giải mã từ vựng" />
+            <GameModeBtn title="Blitz" icon="⚡" onClick={() => startWithMode('blitz')} color="bg-amber-500" desc="Phản xạ tia chớp" />
+            <GameModeBtn title="Survival" icon="❤️" onClick={() => startWithMode('survival')} color="bg-rose-600" desc="Đấu trường sinh tồn" />
+            <GameModeBtn title="Kéo co" icon="🪢" onClick={() => startWithMode('tugofwar')} color="bg-blue-600" desc="Đối kháng cùng Bot" />
+            <GameModeBtn title="Ô chữ" icon="🔤" onClick={() => startWithMode('crossword')} color="bg-violet-600" desc="Giải ô chữ kinh điển" />
+            <GameModeBtn title="Đào hố" icon="⛏️" onClick={() => startWithMode('digduel')} color="bg-orange-600" desc="Đào sâu hơn Bot" />
+            <GameModeBtn title="Đào vàng" icon="🥇" onClick={() => startWithMode('goldminer')} color="bg-yellow-500" desc="Gắp vàng trúng đáp án" />
           </div>
 
-          <div className="relative z-10 mt-8 pt-5 border-t border-slate-100">
-            <h4 className="text-[8px] font-black text-slate-400 uppercase tracking-[3px] mb-3 flex items-center gap-2">
+          <div className="relative z-10 mt-5 pt-4 border-t border-slate-100">
+            <h4 className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                Bảng Vàng Danh Dự
             </h4>
@@ -166,25 +185,25 @@ const GameCenter: React.FC<GameCenterProps> = ({ initialQuestions, initialExamTi
       <>
         {showExitConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="w-full max-w-sm bg-white rounded-[40px] shadow-2xl p-8 border-t-8 border-rose-500 animate-in zoom-in duration-200">
+            <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 border-t-8 border-rose-500 animate-in zoom-in duration-200">
               <div className="text-center space-y-4">
-                <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto mb-2">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                 </div>
-                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">DỪNG TRẬN ĐẤU?</h3>
+                <h3 className="text-base font-bold text-slate-800 uppercase tracking-tight">DỪNG TRẬN ĐẤU?</h3>
                 <p className="text-sm font-medium text-slate-500 leading-relaxed">
                   Mọi điểm số và tiến trình hiện tại sẽ không được lưu lại. Bạn có chắc chắn muốn rời đi?
                 </p>
-                <div className="grid grid-cols-2 gap-3 pt-4">
+                <div className="grid grid-cols-2 gap-2.5 pt-3">
                   <button 
                     onClick={() => setShowExitConfirm(false)} 
-                    className="py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                    className="py-2.5 bg-slate-100 text-slate-600 rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all active:scale-95"
                   >
                     Ở LẠI
                   </button>
                   <button 
                     onClick={confirmExit} 
-                    className="py-3.5 bg-rose-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95"
+                    className="py-2.5 bg-rose-600 text-white rounded-xl font-semibold text-xs uppercase tracking-wider hover:bg-rose-700 transition-all shadow-md shadow-rose-200 active:scale-95"
                   >
                     RỜI ĐI
                   </button>
@@ -198,32 +217,36 @@ const GameCenter: React.FC<GameCenterProps> = ({ initialQuestions, initialExamTi
         {selectedMode === 'blitz' && <BlitzMode questions={activeQuestions} playerName={playerName} onFinish={handleFinish} onBack={triggerExitConfirm} />}
         {selectedMode === 'survival' && <SurvivalMode questions={activeQuestions} playerName={playerName} onFinish={handleFinish} onBack={triggerExitConfirm} />}
         {selectedMode === 'quiz' && <QuizMode questions={activeQuestions} playerName={playerName} onFinish={handleFinish} onBack={triggerExitConfirm} />}
+        {selectedMode === 'tugofwar' && <TugOfWarMode questions={activeQuestions} playerName={playerName} onFinish={handleFinish} onBack={triggerExitConfirm} />}
+        {selectedMode === 'crossword' && <CrosswordMode questions={activeQuestions} playerName={playerName} onFinish={handleFinish} onBack={triggerExitConfirm} />}
+        {selectedMode === 'digduel' && <DigDuelMode questions={activeQuestions} playerName={playerName} onFinish={handleFinish} onBack={triggerExitConfirm} />}
+        {selectedMode === 'goldminer' && <GoldMinerMode questions={activeQuestions} playerName={playerName} onFinish={handleFinish} onBack={triggerExitConfirm} />}
       </>
     );
   }
 
   return (
     <div className="h-full bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white p-10 rounded-[48px] shadow-2xl text-center space-y-6 max-w-sm w-full border border-slate-100 relative overflow-hidden animate-in zoom-in duration-500">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-emerald-500 to-rose-500"></div>
-        <div className="text-6xl animate-bounce">🎊</div>
-        <h1 className="text-3xl font-black text-slate-900 italic tracking-tighter">TRẬN ĐẤU KẾT THÚC</h1>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{playerName}</p>
+      <div className="bg-white p-5 rounded-xl shadow-md text-center space-y-3 max-w-sm w-full border border-slate-100 relative overflow-hidden animate-in zoom-in duration-500">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-emerald-500 to-rose-500"></div>
+        <div className="text-2xl animate-bounce">🎊</div>
+        <h1 className="text-base font-bold text-slate-900 uppercase tracking-tight">TRẬN ĐẤU KẾT THÚC</h1>
+        <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">{playerName}</p>
         
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 p-5 rounded-3xl border-b-2 border-slate-100">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">TỔNG ĐIỂM</p>
-            <p className="text-2xl font-black text-indigo-600">{lastGameResult?.score || 0}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-slate-50 p-3 rounded-xl border-b-2 border-slate-100">
+            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-wider">TỔNG ĐIỂM</p>
+            <p className="text-lg font-bold text-indigo-600">{lastGameResult?.score || 0}</p>
           </div>
-          <div className="bg-slate-50 p-5 rounded-3xl border-b-2 border-slate-100">
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">CHUỖI</p>
-            <p className="text-2xl font-black text-emerald-500">{lastGameResult?.streak || 0}</p>
+          <div className="bg-slate-50 p-3 rounded-xl border-b-2 border-slate-100">
+            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-wider">CHUỖI</p>
+            <p className="text-lg font-bold text-emerald-500">{lastGameResult?.streak || 0}</p>
           </div>
         </div>
         
-        <div className="flex flex-col gap-2">
-          <button onClick={() => setGameState('lobby')} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200">CHƠI TIẾP</button>
-          <button onClick={() => setGameState('selection')} className="w-full py-3 text-slate-400 font-black text-[8px] uppercase tracking-widest">CHỌN CHỦ ĐỀ KHÁC</button>
+        <div className="flex flex-col gap-2 pt-1">
+          <button onClick={() => setGameState('lobby')} className="w-full py-2.5 bg-slate-900 text-white rounded-lg font-semibold text-xs uppercase tracking-wider hover:bg-indigo-600 transition-all shadow-md">CHƠI TIẾP</button>
+          <button onClick={() => setGameState('selection')} className="w-full py-1.5 text-slate-400 font-semibold text-[9px] uppercase tracking-wider">CHỌN CHỦ ĐỀ KHÁC</button>
         </div>
       </div>
     </div>
@@ -231,9 +254,9 @@ const GameCenter: React.FC<GameCenterProps> = ({ initialQuestions, initialExamTi
 };
 
 const GameModeBtn: React.FC<{title: string, icon: string, onClick: () => void, color: string, desc: string}> = ({ title, icon, onClick, color, desc }) => (
-  <button onClick={onClick} className={`${color} p-5 rounded-2xl text-white text-left transition-all flex flex-col gap-1 group shadow-lg active:scale-95 border border-white/10 hover:shadow-xl`}>
-    <div className="bg-white/20 w-8 h-8 rounded-lg flex items-center justify-center text-lg mb-1">{icon}</div>
-    <h4 className="font-black uppercase text-[11px] tracking-tight">{title}</h4>
+  <button onClick={onClick} className={`${color} p-3.5 rounded-xl text-white text-left transition-all flex flex-col gap-1 group shadow-md active:scale-95 border border-white/10 hover:shadow-lg`}>
+    <div className="bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center text-base mb-1">{icon}</div>
+    <h4 className="font-bold uppercase text-[11px] tracking-tight">{title}</h4>
     <p className="text-[8px] font-bold opacity-70 uppercase leading-none">{desc}</p>
   </button>
 );

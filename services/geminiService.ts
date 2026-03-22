@@ -2,9 +2,14 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { ExamConfig, Question, QuestionType, BloomLevel, VocabularyItem } from "../types";
 import { storage, STORAGE_KEYS } from "./storageAdapter";
+import { AIConfigService } from "./aiConfigService";
 
-// Vì getApiKey giờ là async, các hàm gọi nó cũng phải xử lý async key
+// Priority: AIConfigService (settings panel) → storageAdapter fallback → env var
 const getApiKey = async (): Promise<string> => {
+  // 1. Check AIConfigService first (where Settings panel saves)
+  const configKey = AIConfigService.getFreshConfig().geminiApiKey;
+  if (configKey) return configKey;
+  // 2. Fallback to old storage key for backward compatibility
   const manualKey = await storage.get<string>(STORAGE_KEYS.API_KEY, '');
   return manualKey || process.env.API_KEY || '';
 };
@@ -77,7 +82,7 @@ export const extractVocabularyFromFile = async (base64Data: string, mimeType: st
   if (!apiKey) throw new Error("Chưa cấu hình API Key trong phần Cài đặt.");
   
   const ai = new GoogleGenAI({ apiKey });
-  const model = 'gemini-2.0-flash'; // Dùng bản 2.0 Flash ổn định
+  const model = 'gemini-2.5-flash'; // Bản 2.5 Flash ổn định — Free Tier quota cao nhất
 
   const prompt = `
     Đóng vai trò là một chuyên gia ngôn ngữ học và số hóa tài liệu.
@@ -143,14 +148,14 @@ export const extractVocabFromText = async (text: string): Promise<any[]> => {
     Yêu cầu:
     1. Trả về đúng định dạng JSON Array.
     2. Mỗi đối tượng gồm: { "word": "từ", "ipa": "/phiên_âm/", "meaning": "nghĩa_tiếng_việt", "pos": "n/v/adj/adv thối" }.
-    3. Ưu tiên từ vựng trình độ B2 trở lên.
+    3. Ưu tiên các từ vựng học thuật phù hợp với ngữ cảnh.
 
     Văn bản: "${text}"
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: { 
         responseMimeType: "application/json",
@@ -168,43 +173,98 @@ export const extractVocabFromText = async (text: string): Promise<any[]> => {
 export const generateExamContent = async (config: ExamConfig): Promise<Question[]> => {
   const apiKey = await getApiKey();
   const ai = new GoogleGenAI({ apiKey });
+  let lastError: string | null = null;
 
-  // Xây dựng Prompt chi tiết hơn để khắc phục vấn đề "đề thi giống nhau"
-  // Thay đổi: Không hardcode "Tiếng Anh", sử dụng config.subject
-  // Thay đổi: Đưa customRequirement lên ưu tiên cao nhất
-  const prompt = `
-    Đóng vai trò là một giáo viên bộ môn: ${config.subject}.
-    Nhiệm vụ: Tạo một đề thi trắc nghiệm/tự luận dưới dạng JSON.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const retryHeader = lastError ? `ĐÃ XẢY RA LỖI Ở LẦN THỬ TRƯỚC: ${lastError}\nHãy chắc chắn bạn trả về đúng JSON array hợp lệ theo schema.` : "";
     
-    Thông tin đề thi:
-    - Chủ đề chính: ${config.topic}
-    - Môn học: ${config.subject}
-    - Tiêu đề: ${config.title}
-    
-    YÊU CẦU ĐẶC BIỆT TỪ NGƯỜI DÙNG (PROMPT):
-    "${config.customRequirement || "Tạo đề thi tổng hợp kiến thức tiêu chuẩn."}"
-    
-    Cấu trúc ma trận câu hỏi mong muốn (nếu Prompt không ghi đè):
-    ${JSON.stringify(config.sections)}
+    const prompt = `
+      ${retryHeader}
+      Đóng vai trò là một giáo viên bộ môn: ${config.subject}.
+      Nhiệm vụ: Tạo một đề thi trắc nghiệm/tự luận dưới dạng JSON.
+      
+      Thông tin đề thi:
+      - Chủ đề chính: ${config.topic}
+      - Môn học: ${config.subject}
+      - Tiêu đề: ${config.title}
+      
+      YÊU CẦU ĐẶC BIỆT TỪ NGƯỜI DÙNG (PROMPT):
+      "${config.customRequirement || "Tạo đề thi tổng hợp kiến thức tiêu chuẩn."}"
+      
+      Cấu trúc ma trận câu hỏi mong muốn (nếu Prompt không ghi đè):
+      ${JSON.stringify(config.sections)}
 
-    Yêu cầu đầu ra (Quan trọng):
-    1. Nội dung câu hỏi phải mới mẻ, sáng tạo, KHÔNG lặp lại các câu hỏi phổ thông nhàm chán.
-    2. Nếu môn học là Tiếng Anh, nội dung bằng tiếng Anh. Nếu là môn khác (Văn, Sử, Địa...), nội dung bằng Tiếng Việt.
-    3. Trả về đúng định dạng JSON Schema bên dưới.
-    4. "matchingLeft" và "matchingRight" chỉ dùng cho dạng câu hỏi MATCHING (Nối từ), để trống nếu là trắc nghiệm.
-  `;
-  
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        // Tăng temperature để tạo sự đa dạng
-        temperature: 1.0, 
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
+      Yêu cầu đầu ra (Quan trọng):
+      1. Nội dung câu hỏi phải mới mẻ, sáng tạo, KHÔNG lặp lại các câu hỏi phổ thông nhàm chán.
+      2. Nếu môn học là Tiếng Anh, nội dung bằng tiếng Anh. Nếu là môn khác (Văn, Sử, Địa...), nội dung bằng Tiếng Việt.
+      3. Trả về đúng định dạng JSON Schema bên dưới.
+      4. "matchingLeft" và "matchingRight" chỉ dùng cho dạng câu hỏi MATCHING (Nối từ), để trống nếu là trắc nghiệm.
+    `;
+    
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 1.0, 
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                type: { type: Type.STRING },
+                content: { type: Type.STRING },
+                options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                matchingLeft: { type: Type.ARRAY, items: { type: Type.STRING } },
+                matchingRight: { type: Type.ARRAY, items: { type: Type.STRING } },
+                correctAnswer: { type: Type.STRING },
+                explanation: { type: Type.STRING },
+                bloomLevel: { type: Type.STRING },
+                points: { type: Type.NUMBER }
+              },
+              required: ["id", "content", "correctAnswer", "type", "bloomLevel"]
+            }
+          }
+        }
+      });
+      return JSON.parse(cleanJsonResponse(response.text)) as Question[];
+    } catch (error: any) { 
+      console.warn(`[Gemini Retry] Thất bại lần ${attempt}:`, error.message);
+      lastError = error.message;
+      if (attempt === 3) {
+        console.error("Generate Exam Error after 3 attempts:", error);
+        throw error;
+      }
+    }
+  }
+  throw new Error("Không thể tạo nội dung đề thi sau nhiều lần thử.");
+};
+
+export const regenerateSingleQuestion = async (config: ExamConfig, oldQuestion: Question): Promise<Question> => {
+  const apiKey = await getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
+  let lastError: string | null = null;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const retryPrefix = lastError ? `LỖI LẦN TRƯỚC: ${lastError}. Hãy thử lại và chỉ trả về 1 JSON object duy nhất.\n` : "";
+    const prompt = `${retryPrefix}Tạo một câu hỏi ${config.subject} mới thay thế cho câu hỏi cũ này: "${oldQuestion.content}".
+      Yêu cầu:
+      - Loại câu hỏi: ${oldQuestion.type}
+      - Mức độ Bloom: ${oldQuestion.bloomLevel}
+      - Chủ đề chính: ${config.topic}
+      - Yêu cầu bổ sung: ${config.customRequirement}
+      Trả về một đối tượng JSON câu hỏi duy nhất.`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 1.0,
+          responseSchema: {
             type: Type.OBJECT,
             properties: {
               id: { type: Type.STRING },
@@ -221,62 +281,15 @@ export const generateExamContent = async (config: ExamConfig): Promise<Question[
             required: ["id", "content", "correctAnswer", "type", "bloomLevel"]
           }
         }
-      }
-    });
-    return JSON.parse(cleanJsonResponse(response.text)) as Question[];
-  } catch (error) { 
-    console.error("Generate Exam Error:", error);
-    throw error; 
+      });
+      return JSON.parse(cleanJsonResponse(response.text)) as Question;
+    } catch (error: any) {
+      console.warn(`[Gemini Regenerate Retry] Lần ${attempt}:`, error.message);
+      lastError = error.message;
+      if (attempt === 3) throw error;
+    }
   }
-};
-
-export const regenerateSingleQuestion = async (config: ExamConfig, oldQuestion: Question): Promise<Question> => {
-  const apiKey = await getApiKey();
-  if (!apiKey) throw new Error("Chưa cấu hình API Key.");
-  
-  const ai = new GoogleGenAI({ apiKey });
-  const prompt = `Tạo một câu hỏi ${config.subject} mới thay thế cho câu hỏi cũ này: "${oldQuestion.content}".
-    Yêu cầu:
-    - Loại câu hỏi: ${oldQuestion.type}
-    - Mức độ Bloom: ${oldQuestion.bloomLevel}
-    - Chủ đề chính: ${config.topic}
-    - Yêu cầu bổ sung: ${config.customRequirement}
-    Trả về một đối tượng JSON câu hỏi duy nhất.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            content: { type: Type.STRING },
-            options: { type: Type.ARRAY, items: { type: Type.STRING } },
-            matchingLeft: { type: Type.ARRAY, items: { type: Type.STRING } },
-            matchingRight: { type: Type.ARRAY, items: { type: Type.STRING } },
-            correctAnswer: { type: Type.STRING },
-            explanation: { type: Type.STRING },
-            bloomLevel: { type: Type.STRING },
-            points: { type: Type.NUMBER }
-          },
-          required: ["content", "correctAnswer", "explanation"]
-        }
-      }
-    });
-
-    const result = JSON.parse(cleanJsonResponse(response.text));
-    return {
-      ...result,
-      id: oldQuestion.id,
-      type: oldQuestion.type,
-      bloomLevel: result.bloomLevel || oldQuestion.bloomLevel
-    };
-  } catch (error) {
-    console.error("Regenerate Question Error:", error);
-    throw error;
-  }
+  throw new Error("Không thể tái tạo câu hỏi.");
 };
 
 export const analyzeLanguage = async (text: string): Promise<DictionaryResponse> => {
@@ -284,7 +297,7 @@ export const analyzeLanguage = async (text: string): Promise<DictionaryResponse>
   const ai = new GoogleGenAI({ apiKey });
   const prompt = `Phân tích từ/câu: "${text}"`;
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     contents: prompt,
     config: { responseMimeType: "application/json" }
   });
@@ -303,26 +316,79 @@ export interface DictionaryResponse {
   usageNotes?: string;
 }
 
-export const generateMacaronicStory = async (wordList: string, topic: string): Promise<string> => {
+export const generateMacaronicStory = async (wordList: string, topic: string, baseLanguage: 'vi' | 'en' = 'vi'): Promise<{story: string, vocabulary: {word: string, meaning: string, pos?: string, ipa?: string, example?: string, synonyms?: string[]}[]}> => {
   const apiKey = await getApiKey();
-  if (!apiKey) throw new Error("Chưa cấu hình API Key trong phần Cài đặt.");
+  if (!apiKey) throw new Error("Chưa cấu hình API Key. Vui lòng kiểm tra lại trong phần Cài đặt.");
 
   const ai = new GoogleGenAI({ apiKey });
+  const isViBase = baseLanguage === 'vi';
 
-  const prompt = `Đóng vai một chuyên gia ngôn ngữ học. Hãy viết một câu chuyện ngắn bằng tiếng Việt (khoảng 250 - 300 chữ) với chủ đề: ${topic}. 
-YÊU CẦU BẮT BUỘC: Hãy thay thế các từ tiếng Việt tương ứng bằng các từ tiếng Anh sau đây: ${wordList}. 
-Đảm bảo ngữ cảnh của câu chuyện đủ rõ ràng, tự nhiên để người đọc có thể dễ dàng đoán được nghĩa của các từ tiếng Anh được chêm vào. Trả về kết quả dưới dạng Markdown, in đậm (**word**) các từ tiếng Anh đó.`;
+  const prompt = `
+Bạn là chuyên gia viết "Truyện Chêm" (Macaronic Story) để giúp người học ngôn ngữ.
+
+NHIỆM VỤ: Viết câu chuyện ngắn 200-300 từ về chủ đề "${topic}".
+
+DANH SÁCH TỪ VỰNG BẮT BUỘC PHẢI CHÊM: ${wordList}
+
+QUY TẮC QUAN TRỌNG NHẤT:
+${isViBase ? `
+- Viết câu chuyện bằng TIẾNG VIỆT, nhưng CHÊM các từ TIẾNG ANH ở trên vào thay thế cho từ tiếng Việt tương ứng.
+- Mỗi từ tiếng Anh phải được bọc trong thẻ <b>...</b>.
+- KHÔNG dịch các từ tiếng Anh ra tiếng Việt trong truyện. Giữ nguyên từ tiếng Anh.
+
+VÍ DỤ MẪU (nếu từ vựng là: resilient, journey, discover):
+"Minh là một chàng trai rất <b>resilient</b>, dù gặp bao khó khăn anh vẫn không bỏ cuộc. Một ngày nọ, anh bắt đầu một <b>journey</b> dài đến vùng đất mới. Tại đó, anh <b>discover</b> ra những điều kỳ diệu mà mình chưa từng biết."
+` : `
+- Viết câu chuyện bằng TIẾNG ANH, nhưng CHÊM nghĩa TIẾNG VIỆT của các từ vào thay thế cho từ tiếng Anh tương ứng.
+- Mỗi từ tiếng Việt được chêm phải được bọc trong thẻ <b>...</b>.
+
+VÍ DỤ MẪU (nếu từ vựng là: kiên cường, hành trình, khám phá):
+"Minh was a very <b>kiên cường</b> young man who never gave up. One day, he started a long <b>hành trình</b> to a new land. There, he would <b>khám phá</b> wonderful things he had never known."
+`}
+
+BẮT BUỘC:
+1. Sử dụng TẤT CẢ các từ trong danh sách, KHÔNG bỏ sót từ nào.
+2. Các từ chêm phải nằm TỰ NHIÊN trong câu, có ngữ cảnh rõ ràng để người đọc đoán được nghĩa.
+3. KHÔNG giải thích nghĩa của từ trong truyện.
+4. BẮT BUỘC bọc từ chêm trong thẻ <b>...</b>.
+
+Trả về JSON với ĐÚNG format sau:
+{
+  "story": "Nội dung câu chuyện có chêm từ trong thẻ <b>...</b>",
+  "vocabulary": [
+    {
+      "word": "từ_tiếng_anh",
+      "meaning": "nghĩa_tiếng_việt",
+      "pos": "noun/verb/adj/adv",
+      "ipa": "/phiên_âm_IPA/",
+      "example": "Một câu ví dụ sử dụng từ này trong tiếng Anh",
+      "synonyms": ["từ_đồng_nghĩa_1", "từ_đồng_nghĩa_2"]
+    }
+  ]
+}
+
+Trường "vocabulary" BẮT BUỘC liệt kê TẤT CẢ các từ với đầy đủ thông tin: word, meaning, pos, ipa, example, synonyms.
+`;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
-      config: { temperature: 0.9 }
+      config: { 
+        responseMimeType: "application/json",
+        temperature: 0.8,
+        topP: 0.9
+      }
     });
-    return response.text || '';
+
+    if (!response || !response.text) {
+      throw new Error("Dữ liệu trả về không hợp lệ.");
+    }
+    
+    return JSON.parse(cleanJsonResponse(response.text)) as {story: string, vocabulary: {word: string, meaning: string, pos?: string, ipa?: string, example?: string, synonyms?: string[]}[]};
   } catch (error: any) {
-    console.error("Macaronic Story Error:", error);
-    throw new Error(error?.message || "Lỗi AI không thể tạo truyện.");
+    console.error("Internal Macaronic Story Error:", error);
+    throw new Error(error?.message || "Hệ thống đang quá tải hoặc gặp sự cố kỹ thuật. Vui lòng thử lại sau giây lát.");
   }
 };
 
@@ -335,14 +401,14 @@ export const evaluateWriting = async (textInput: string): Promise<string> => {
 
   const ai = new GoogleGenAI({ apiKey });
 
-  const prompt = `Act as an expert Aptis ESOL / IELTS Writing Examiner. Evaluate the user's text for a B2 target.
+  const prompt = `Act as an expert English Writing Examiner. Evaluate the user's text based on CEFR levels (A1-C2).
   Must output ONLY in strictly formatted Markdown.
   Structure required:
   ### 📊 Ước lượng điểm (Band Score): [Your Score]
   ### 🚨 Phân tích lỗi Ngữ pháp & Chính tả:
   - **[Lỗi sai]** -> **[Cách sửa]**: [Giải thích ngắn gọn]
   ### 💎 Gợi ý Nâng cấp Từ vựng (Vocabulary):
-  - Thay vì dùng **[Từ cũ]**, hãy dùng **[Từ vựng B2/C1]**: [Câu ví dụ]
+  - Thay vì dùng **[Từ cũ]**, hãy dùng **[Từ vựng nâng cao hơn]**: [Câu ví dụ]
   ### 💡 Nhận xét chung & Cấu trúc bài:
   [Feedback của bạn]
 
@@ -350,7 +416,7 @@ export const evaluateWriting = async (textInput: string): Promise<string> => {
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: { temperature: 0.2 } // Low temperature for consistent grading
     });
@@ -384,7 +450,7 @@ export const analyzeWordFormation = async (word: string): Promise<WordFormationR
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: { 
         responseMimeType: "application/json",
@@ -435,7 +501,7 @@ export const generateVocabMindMap = async (topic: string): Promise<VocabMindMapR
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: { 
         responseMimeType: "application/json",

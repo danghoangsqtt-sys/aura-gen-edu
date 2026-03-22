@@ -1,0 +1,80 @@
+{
+  "a": {
+    "asset": {
+      "vocabulary": "asset",
+      "ipa": "/ˈæs.et/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "tài sản (của công ty hoặc cá nhân)", "example": "A company's intellectual property is a highly valuable asset." }] }]
+    },
+    "acquisition": {
+      "vocabulary": "acquisition",
+      "ipa": "/ˌæk.wɪˈzɪʃ.ən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "sự mua lại (công ty), thâu tóm", "example": "The tech giant announced its acquisition of the smaller startup." }] }]
+    },
+    "audit": {
+      "vocabulary": "audit",
+      "ipa": "/ˈɔː.dɪt/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "kiểm toán", "example": "The company's finances undergo an external audit every year." }] }]
+    }
+  },
+  "b": {
+    "bankruptcy": {
+      "vocabulary": "bankruptcy",
+      "ipa": "/ˈbæŋ.krəpt.si/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "sự phá sản, vỡ nợ", "example": "The company was forced into bankruptcy after the crisis." }] }]
+    },
+    "budget": {
+      "vocabulary": "budget",
+      "ipa": "/ˈbʌdʒ.ɪt/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "ngân sách", "example": "We need to stay within our marketing budget for this quarter." }] }]
+    }
+  },
+  "e": {
+    "equity": {
+      "vocabulary": "equity",
+      "ipa": "/ˈek.wɪ.ti/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "vốn chủ sở hữu, tính công bằng", "example": "He has built up considerable equity in his home." }] }]
+    }
+  },
+  "f": {
+    "fiscal": {
+      "vocabulary": "fiscal",
+      "ipa": "/ˈfɪs.kəl/",
+      "details": [{ "pos": "adjective", "means": [{ "mean": "thuộc về ngân khố, tài chính", "example": "The company's fiscal year ends in December." }] }]
+    }
+  },
+  "l": {
+    "liability": {
+      "vocabulary": "liability",
+      "ipa": "/ˌlaɪ.əˈbɪl.ɪ.ti/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "trách nhiệm pháp lý, khoản nợ", "example": "The company's total liabilities exceeded its assets." }] }]
+    }
+  },
+  "m": {
+    "merger": {
+      "vocabulary": "merger",
+      "ipa": "/ˈmɜː.dʒər/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "sự sáp nhập (hai công ty)", "example": "The merger of the two airlines created a major global competitor." }] }]
+    }
+  },
+  "p": {
+    "portfolio": {
+      "vocabulary": "portfolio",
+      "ipa": "/ˌpɔːtˈfəʊ.li.əʊ/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "danh mục đầu tư, hồ sơ trình bày", "example": "She has a diverse investment portfolio." }] }]
+    }
+  },
+  "r": {
+    "revenue": {
+      "vocabulary": "revenue",
+      "ipa": "/ˈrev.ən.juː/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "doanh thu, tổng thu nhập", "example": "The factory's total revenue increased by 20% this year." }] }]
+    }
+  },
+  "s": {
+    "subsidiary": {
+      "vocabulary": "subsidiary",
+      "ipa": "/səbˈsɪd.i.ə.ri/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "công ty con", "example": "The parent company has several subsidiaries in Asia." }] }]
+    }
+  }
+}

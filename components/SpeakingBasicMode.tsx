@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { SpeakingQuestion, SpeakingFeedback } from '../types';
-import { evaluateSpeakingSession } from '../services/speakingService';
+import { OllamaService } from '../services/ollamaService';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
 
 interface Props {
@@ -79,7 +79,8 @@ const SpeakingBasicMode: React.FC<Props> = ({ onBack }) => {
           const base64Audio = (reader.result as string).split(',')[1];
           try {
             const currentQ = questions[currentQIndex];
-            const result = await evaluateSpeakingSession(currentQ.question, base64Audio, currentQ.sampleAnswer);
+            const transcription = await OllamaService.speechToText(base64Audio);
+            const result = await OllamaService.evaluateSpeaking(currentQ.question, transcription);
             setFeedback(result);
           } catch (err) {
             alert("Lỗi phân tích giọng nói.");

@@ -2,6 +2,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ExamConfig, Difficulty, QuestionType, BloomLevel } from '../types';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
+import { 
+  Settings2, 
+  School, 
+  Users, 
+  Type, 
+  BookOpen, 
+  BarChart3, 
+  Sparkles, 
+  Plus, 
+  Trash2, 
+  Clock, 
+  FileText 
+} from 'lucide-react';
 
 interface ConfigPanelProps {
   onGenerate: (config: ExamConfig) => void;
@@ -14,7 +27,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ onGenerate, isGenerating }) =
     subject: 'Tiếng Anh',
     topic: 'Grammar and Vocabulary',
     duration: 45,
-    difficulty: Difficulty.INTERMEDIATE,
+    difficulty: Difficulty.B1,
     schoolName: '',
     teacherName: '',
     department: '',
@@ -34,7 +47,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ onGenerate, isGenerating }) =
          teacherName: '',
          department: '',
          defaultDuration: 45,
-         defaultDifficulty: Difficulty.INTERMEDIATE
+         defaultDifficulty: Difficulty.B1
       });
 
       setConfig(prev => ({
@@ -87,14 +100,18 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ onGenerate, isGenerating }) =
   };
 
   return (
-    <div className="bg-white rounded-[24px] p-5 shadow-xl border border-slate-100 flex flex-col space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
+    <div className="bg-white/80 backdrop-blur-xl rounded-xl p-4 shadow-sm border border-white/40 flex flex-col space-y-4 animate-in fade-in slide-in-from-left-4 duration-500 overflow-hidden relative">
+      <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-indigo-500/10 blur-[80px] rounded-full"></div>
+      
       {/* Header Panel */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-1.5 h-7 bg-indigo-600 rounded-full"></div>
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+            <Settings2 className="w-5 h-5" />
+          </div>
           <div>
-            <h2 className="text-base font-black text-slate-800 tracking-tight leading-none">Thiết lập đề</h2>
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">Smart Generator</p>
+            <h2 className="text-base font-black text-slate-800 tracking-tight leading-none uppercase">Thiết lập đề</h2>
+            <p className="text-[7px] font-black text-slate-400 uppercase tracking-[3px] mt-1">AI Generator</p>
           </div>
         </div>
         <div className={`px-2.5 py-1 rounded-full text-[9px] font-black border transition-colors ${totalPoints === 10 ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
@@ -106,46 +123,83 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ onGenerate, isGenerating }) =
       <div className="space-y-4">
         {/* --- CẬP NHẬT MỚI: Thêm ô nhập Tên Trường & Tổ Chuyên Môn --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Tên trường / Đơn vị</label>
+          <div className="space-y-1.5 focus-within:translate-x-1 transition-transform">
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+              <School className="w-3 h-3 text-slate-300" />
+              Tên trường / Đơn vị
+            </label>
             <input 
-              className="w-full bg-slate-50 border border-slate-200 p-2 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-indigo-100 transition-all placeholder:font-normal" 
+              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all placeholder:font-normal placeholder:text-slate-300" 
               value={config.schoolName || ''} 
               onChange={e => setConfig({...config, schoolName: e.target.value})}
               placeholder="VD: TRƯỜNG THPT NGUYỄN TRÃI"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Tổ / Bộ môn</label>
+          <div className="space-y-1.5 focus-within:translate-x-1 transition-transform">
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+              <Users className="w-3 h-3 text-slate-300" />
+              Tổ / Bộ môn
+            </label>
             <input 
-              className="w-full bg-slate-50 border border-slate-200 p-2 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-indigo-100 transition-all placeholder:font-normal" 
+              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all placeholder:font-normal placeholder:text-slate-300" 
               value={config.department || ''} 
               onChange={e => setConfig({...config, department: e.target.value})}
               placeholder="VD: TỔ TOÁN - TIN"
             />
           </div>
         </div>
-        {/* ------------------------------------------------------------- */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Tiêu đề chính</label>
-            <input className="w-full bg-slate-50 border border-slate-200 p-2 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-indigo-100 transition-all" value={config.title} onChange={e => setConfig({...config, title: e.target.value})} />
+          <div className="space-y-1.5 focus-within:translate-x-1 transition-transform">
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+              <Type className="w-3 h-3 text-slate-300" />
+              Tiêu đề chính
+            </label>
+            <input className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all" value={config.title} onChange={e => setConfig({...config, title: e.target.value})} />
           </div>
-          <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Môn học</label>
-            <input className="w-full bg-slate-50 border border-slate-200 p-2 rounded-xl text-[11px] font-bold outline-none" value={config.subject} onChange={e => setConfig({...config, subject: e.target.value})} />
+          <div className="space-y-1.5 focus-within:translate-x-1 transition-transform">
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+              <BookOpen className="w-3 h-3 text-slate-300" />
+              Môn học
+            </label>
+            <input className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all" value={config.subject} onChange={e => setConfig({...config, subject: e.target.value})} />
+          </div>
+          <div className="space-y-1.5 focus-within:translate-x-1 transition-transform">
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+              <BarChart3 className="w-3 h-3 text-slate-300" />
+              Trình độ (Level)
+            </label>
+            <select 
+              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold outline-none cursor-pointer focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all appearance-none"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2394a3b8\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2.5\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
+              value={config.difficulty}
+              onChange={e => setConfig({...config, difficulty: e.target.value as Difficulty})}
+            >
+              {Object.values(Difficulty).map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5 focus-within:translate-x-1 transition-transform">
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+              <Clock className="w-3 h-3 text-slate-300" />
+              Thời gian (Phút)
+            </label>
+            <input 
+              type="number"
+              className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all" 
+              value={config.duration} 
+              onChange={e => setConfig({...config, duration: parseInt(e.target.value) || 0})} 
+            />
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[8px] font-black text-indigo-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-            <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
-            Yêu cầu trọng tâm từ giáo viên
+        <div className="space-y-1.5 focus-within:translate-x-1 transition-transform">
+          <label className="text-[8px] font-black text-indigo-500 uppercase tracking-[2px] ml-1 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+            Yêu cầu trọng tâm (Prompt AI)
           </label>
           <textarea 
-            className="w-full bg-indigo-50/20 border border-indigo-100 p-2.5 rounded-xl text-[10px] focus:ring-2 focus:ring-indigo-100 outline-none min-h-[60px] leading-normal font-medium"
-            placeholder="Ví dụ: Tập trung vào ngữ pháp Unit 3, các thì tương lai..."
+            className="w-full bg-indigo-50/10 border border-indigo-100 p-3 rounded-xl text-[11px] focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 outline-none min-h-[70px] leading-normal font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-300 shadow-inner"
+            placeholder="Ví dụ: Tập trung vào ngữ pháp Unit 3, các thì tương lai, bao gồm cả từ vựng chủ đề môi trường..."
             value={config.customRequirement}
             onChange={e => setConfig({...config, customRequirement: e.target.value})}
           />
@@ -153,23 +207,23 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ onGenerate, isGenerating }) =
 
         {/* Matrix Section - Redesigned */}
         <div className="pt-2">
-          <div className="flex justify-between items-end mb-2.5">
+          <div className="flex justify-between items-end mb-3">
             <div>
               <h3 className="font-black text-slate-700 text-[10px] uppercase tracking-widest">Ma trận nội dung</h3>
               <p className="text-[7px] text-slate-400 font-bold uppercase mt-0.5">Cấu trúc các phần trong đề</p>
             </div>
-            <button onClick={addSection} className="bg-slate-50 hover:bg-indigo-50 text-indigo-600 text-[8px] font-black px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-200 transition-all flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+            <button onClick={addSection} className="bg-indigo-600 hover:bg-slate-900 text-white text-[8px] font-black px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-100 hover:translate-y-[-1px] active:translate-y-[1px]">
+              <Plus className="w-3 h-3" />
               THÊM PHẦN
             </button>
           </div>
 
           <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1 custom-scrollbar">
             {config.sections.map((section, idx) => (
-              <div key={idx} className="bg-slate-50/50 border border-slate-100 rounded-[20px] p-3 relative group hover:bg-white hover:shadow-md transition-all duration-300">
+              <div key={idx} className="bg-slate-50/50 border border-slate-100 rounded-xl p-3 relative group hover:bg-white hover:shadow-md transition-all duration-300">
                 {/* Remove Button */}
-                <button onClick={() => removeSection(idx)} className="absolute -top-1.5 -right-1.5 bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-rose-500 w-5 h-5 flex items-center justify-center rounded-full z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button onClick={() => removeSection(idx)} className="absolute -top-2 -right-2 bg-white shadow-xl border border-slate-100 text-rose-500 hover:bg-rose-500 hover:text-white w-7 h-7 flex items-center justify-center rounded-full z-10 opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100">
+                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
 
                 <div className="space-y-3">
@@ -245,19 +299,28 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ onGenerate, isGenerating }) =
       <button
         disabled={isGenerating}
         onClick={() => onGenerate(config)}
-        className={`w-full py-3.5 rounded-2xl text-white font-black text-xs shadow-lg transition-all transform active:scale-95 flex items-center justify-center space-x-2 mt-2 ${
-          isGenerating ? 'bg-slate-200 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
+        className={`w-full py-3 rounded-xl text-white font-bold text-sm shadow-md transition-all transform active:scale-95 flex items-center justify-center space-x-2.5 mt-3 relative overflow-hidden group/btn ${
+          isGenerating 
+            ? 'bg-slate-200 cursor-not-allowed' 
+            : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200/50 hover:shadow-indigo-300'
         }`}
       >
+        {!isGenerating && (
+          <div className="absolute inset-0 bg-white/10 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 skew-x-[45deg]"></div>
+        )}
+        
         {isGenerating ? (
-          <div className="flex items-center space-x-2">
-            <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-slate-500 uppercase tracking-widest text-[9px]">AI đang phân tích...</span>
+          <div className="flex items-center space-x-3">
+             <div className="relative">
+                <div className="w-5 h-5 border-3 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 w-5 h-5 border-3 border-indigo-200 opacity-20 rounded-full"></div>
+             </div>
+            <span className="text-indigo-600 uppercase tracking-wider text-[10px]">Đang kết nối não bộ Aura...</span>
           </div>
         ) : (
           <>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-            <span className="uppercase tracking-[2px]">BIÊN SOẠN NGAY</span>
+            <Sparkles className="w-4 h-4" />
+            <span className="uppercase tracking-wider text-xs">BIÊN SOẠN NGAY</span>
           </>
         )}
       </button>

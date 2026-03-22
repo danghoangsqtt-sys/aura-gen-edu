@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { STTService } from '../services/sttService';
 import { OllamaService, ChatMessage as OllamaChatMessage } from '../services/ollamaService';
 import { VieneuService } from '../services/vieneuService';
@@ -16,6 +16,8 @@ export const useAuraLocalVoice = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [interimText, setInterimText] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [micVolume, setMicVolume] = useState(0);
 
   const { 
     setTtsVolume, 
@@ -25,25 +27,41 @@ export const useAuraLocalVoice = () => {
   } = useAuraStore();
 
   const isActiveRef = useRef(false);
+  const messagesRef = useRef<ChatMessage[]>([]);
+
+  // Keep ref in sync with state for async closures
+  const updateMessages = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
+    setMessages(prev => {
+      const next = updater(prev);
+      messagesRef.current = next;
+      return next;
+    });
+  }, []);
 
   // Helper to add messages
   const addMessage = useCallback((role: 'user' | 'model', text: string) => {
-    setMessages(prev => [...prev, {
+    updateMessages(prev => [...prev, {
         id: `${role}-${Date.now()}`,
         role,
         text,
         timestamp: Date.now()
     }]);
-  }, []);
+  }, [updateMessages]);
 
-  const startListeningLoop = useCallback(() => {
-    if (!isActiveRef.current) return;
+  // === PRESS-TO-RECORD: Start recording ===
+  const startRecording = useCallback(() => {
+    if (!isActiveRef.current || isRecording) return;
 
-    console.log("[useAuraLocalVoice] -> Starting STT...");
+    setIsRecording(true);
+    setInterimText('');
+    console.log("[useAuraLocalVoice] -> Starting recording (press-to-record)...");
+
     STTService.getInstance().startListening(
       (text, isFinal) => {
         if (isFinal) {
           setInterimText('');
+          setIsRecording(false);
+          setMicVolume(0);
           processUserVoice(text);
         } else {
           setInterimText(text);
@@ -51,25 +69,39 @@ export const useAuraLocalVoice = () => {
       },
       () => {
         console.log("[useAuraLocalVoice] -> STT ended.");
+        setIsRecording(false);
+        setMicVolume(0);
       },
-      (err) => {
+      (err: any) => {
         console.error("[useAuraLocalVoice] -> STT Error:", err);
+        setIsRecording(false);
+        setMicVolume(0);
+        setIsAuraSpeaking(false);
+      },
+      // Mic volume callback
+      (vol: number) => {
+        setMicVolume(vol);
       }
     );
-  }, []);
+  }, [isRecording]);
+
+  // === PRESS-TO-RECORD: Stop recording ===
+  const stopRecording = useCallback(() => {
+    if (!isRecording) return;
+    console.log("[useAuraLocalVoice] -> Stopping recording...");
+    STTService.getInstance().stopListening();
+    // isRecording will be set to false by onEnd/onResult callbacks
+  }, [isRecording]);
 
   const processUserVoice = async (text: string) => {
-    if (!text.trim()) {
-        if (isActiveRef.current) startListeningLoop();
-        return;
-    }
+    if (!text.trim()) return;
 
     addMessage('user', text);
     setIsThinking(true);
 
     try {
       // Prepare history for Ollama
-      const history: OllamaChatMessage[] = messages.map(m => ({
+      const history: OllamaChatMessage[] = messagesRef.current.map(m => ({
         role: m.role === 'user' ? 'user' : 'assistant',
         content: m.text
       }));
@@ -84,7 +116,6 @@ export const useAuraLocalVoice = () => {
     } catch (err) {
       console.error("[useAuraLocalVoice] -> Ollama Error:", err);
       setIsThinking(false);
-      if (isActiveRef.current) startListeningLoop();
     }
   };
 
@@ -92,8 +123,20 @@ export const useAuraLocalVoice = () => {
     if (!isActiveRef.current) return;
 
     setIsAuraSpeaking(true);
-    // Remove markdown for cleaner speech
-    const cleanText = text.replace(/[*_#`]/g, '');
+    // Strip markdown thoroughly for clean TTS
+    const cleanText = text
+      .replace(/```[\s\S]*?```/g, '')   // code blocks
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+      .replace(/\*([^*]+)\*/g, '$1')     // italic
+      .replace(/__([^_]+)__/g, '$1')     // bold alt
+      .replace(/_([^_]+)_/g, '$1')       // italic alt
+      .replace(/`([^`]+)`/g, '$1')       // inline code
+      .replace(/^#{1,6}\s+/gm, '')       // headers
+      .replace(/^[-*+]\s+/gm, '')        // unordered lists
+      .replace(/^\d+\.\s+/gm, '')        // ordered lists
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links
+      .replace(/\n{2,}/g, '. ')           // double newlines → pause
+      .trim();
 
     VieneuService.getInstance().speak(
       cleanText,
@@ -101,10 +144,7 @@ export const useAuraLocalVoice = () => {
       () => {
         setIsAuraSpeaking(false);
         setTtsVolume(0);
-        // Loop back to listing after Aura finishes speaking
-        if (isActiveRef.current) {
-            startListeningLoop();
-        }
+        // After Aura finishes speaking, user can press Record again
       }
     );
   };
@@ -113,18 +153,20 @@ export const useAuraLocalVoice = () => {
     isActiveRef.current = true;
     setConnected(true);
     setMessages([]);
+    messagesRef.current = [];
 
     if (initialGreeting) {
        addMessage('model', initialGreeting);
        speakAura(initialGreeting);
-    } else {
-       startListeningLoop();
     }
+    // No auto-listen — user presses Record button when ready
   };
 
   const disconnect = () => {
     isActiveRef.current = false;
     setConnected(false);
+    setIsRecording(false);
+    setMicVolume(0);
     STTService.getInstance().stopListening();
     VieneuService.getInstance().stop();
     setIsAuraSpeaking(false);
@@ -140,6 +182,10 @@ export const useAuraLocalVoice = () => {
     isSpeaking: isAuraSpeaking, 
     messages, 
     isThinking,
-    interimText
+    interimText,
+    isRecording,
+    micVolume,
+    startRecording,
+    stopRecording
   };
 };

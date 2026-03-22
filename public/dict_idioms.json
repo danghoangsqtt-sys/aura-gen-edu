@@ -1,0 +1,67 @@
+{
+  "p": {
+    "piece of cake": {
+      "vocabulary": "a piece of cake",
+      "ipa": "/ə ˌpiːs əv ˈkeɪk/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "một việc cực kỳ dễ dàng, dễ ợt", "example": "Don't worry about the math test, it will be a piece of cake." }] }]
+    },
+    "pull yourself together": {
+      "vocabulary": "pull yourself together",
+      "ipa": "/pʊl jɔːˈself təˈɡeð.ər/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "bình tĩnh lại, kiềm chế cảm xúc", "example": "You need to pull yourself together and focus on the task." }] }]
+    }
+  },
+  "s": {
+    "spill the beans": {
+      "vocabulary": "spill the beans",
+      "ipa": "/ˌspɪl ðə ˈbiːnz/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "tiết lộ bí mật, làm lộ chuyện", "example": "Come on, spill the beans! What did he say to you?" }] }]
+    },
+    "see eye to eye": {
+      "vocabulary": "see eye to eye",
+      "ipa": "/siː aɪ tuː aɪ/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "đồng quan điểm, đồng ý với ai", "example": "My boss and I don't always see eye to eye on everything." }] }]
+    },
+    "sit on the fence": {
+      "vocabulary": "sit on the fence",
+      "ipa": "/sɪt ɒn ðə fens/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "lưỡng lự, chưa quyết định bên nào", "example": "You can't sit on the fence forever; you need to make a choice." }] }]
+    }
+  },
+  "u": {
+    "under the weather": {
+      "vocabulary": "under the weather",
+      "ipa": "/ˌʌn.də ðə ˈweð.ər/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "cảm thấy không được khỏe, hơi ốm", "example": "I'm going to stay in bed today, I'm feeling a bit under the weather." }] }]
+    },
+    "up in the air": {
+      "vocabulary": "up in the air",
+      "ipa": "/ʌp ɪn ðə eər/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "chưa chắc chắn, chưa được quyết định", "example": "The plans for the summer trip are still up in the air." }] }]
+    }
+  },
+  "b": {
+    "break a leg": {
+      "vocabulary": "break a leg",
+      "ipa": "/breɪk ə leɡ/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "chúc may mắn (thường dùng trước khi lên sân khấu)", "example": "Break a leg at your performance tonight!" }] }]
+    },
+    "bite the bullet": {
+      "vocabulary": "bite the bullet",
+      "ipa": "/baɪt ðə ˈbʊl.ɪt/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "chấp nhận làm một việc khó khăn/không mong muốn", "example": "I have to bite the bullet and finish this boring report." }] }]
+    }
+  },
+  "c": {
+    "cost an arm and a leg": {
+      "vocabulary": "cost an arm and a leg",
+      "ipa": "/kɒst ən ɑːm ənd ə leɡ/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "rất đắt đỏ, tốn kém", "example": "This new sports car cost me an arm and a leg." }] }]
+    },
+    "cut corners": {
+      "vocabulary": "cut corners",
+      "ipa": "/kʌt ˈkɔː.nərz/",
+      "details": [{ "pos": "idiom", "means": [{ "mean": "làm dối, làm tắt để tiết kiệm thời gian hoặc tiền bạc", "example": "Don't cut corners on safety; it's not worth the risk." }] }]
+    }
+  }
+}

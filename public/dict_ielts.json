@@ -1,0 +1,68 @@
+{
+  "a": {
+    "alleviate": {
+      "vocabulary": "alleviate",
+      "ipa": "/əˈliː.vi.eɪt/",
+      "details": [{ "pos": "verb", "means": [{ "mean": "làm nhẹ bớt, làm giảm bớt (nỗi đau, sự khó khăn)", "example": "The new government program is designed to alleviate poverty in rural areas." }] }]
+    },
+    "ambiguous": {
+      "vocabulary": "ambiguous",
+      "ipa": "/æmˈbɪɡ.ju.əs/",
+      "details": [{ "pos": "adjective", "means": [{ "mean": "mơ hồ, nhập nhằng, có nhiều hơn một nghĩa", "example": "His message was ambiguous, making it difficult to understand his true intentions." }] }]
+    }
+  },
+  "c": {
+    "consecutive": {
+      "vocabulary": "consecutive",
+      "ipa": "/kənˈsek.jə.tɪv/",
+      "details": [{ "pos": "adjective", "means": [{ "mean": "liên tiếp, dồn dập", "example": "She finished the race in first place for three consecutive years." }] }]
+    },
+    "counterpart": {
+      "vocabulary": "counterpart",
+      "ipa": "/ˈkaʊn.tə.pɑːt/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "bên tương ứng, đối tác", "example": "The Prime Minister met with his British counterpart to discuss trade relations." }] }]
+    }
+  },
+  "d": {
+    "deteriorate": {
+      "vocabulary": "deteriorate",
+      "ipa": "/dɪˈtɪə.ri.ə.reɪt/",
+      "details": [{ "pos": "verb", "means": [{ "mean": "xấu đi, tồi tệ đi", "example": "The patient's condition deteriorated rapidly overnight." }] }]
+    }
+  },
+  "e": {
+    "elicit": {
+      "vocabulary": "elicit",
+      "ipa": "/iˈlɪs.ɪt/",
+      "details": [{ "pos": "verb", "means": [{ "mean": "khơi gợi, gợi ra (phản ứng, thông tin)", "example": "The questionnaire was intended to elicit information on eating habits." }] }]
+    }
+  },
+  "f": {
+    "feasible": {
+      "vocabulary": "feasible",
+      "ipa": "/ˈfiː.zə.bəl/",
+      "details": [{ "pos": "adjective", "means": [{ "mean": "khả thi, có thể thực hiện được", "example": "With the current budget, it is not feasible to build a new hospital." }] }]
+    }
+  },
+  "i": {
+    "inevitable": {
+      "vocabulary": "inevitable",
+      "ipa": "/ɪˈnev.ɪ.tə.bəl/",
+      "details": [{ "pos": "adjective", "means": [{ "mean": "không thể tránh khỏi, tất yếu", "example": "The split between the two political parties was inevitable." }] }]
+    }
+  },
+  "p": {
+    "prevalent": {
+      "vocabulary": "prevalent",
+      "ipa": "/ˈprev.əl.ənt/",
+      "details": [{ "pos": "adjective", "means": [{ "mean": "phổ biến, thịnh hành", "example": "These diseases are more prevalent among young children." }] }]
+    }
+  },
+  "u": {
+    "unprecedented": {
+      "vocabulary": "unprecedented",
+      "ipa": "/ʌnˈpres.ɪ.den.tɪd/",
+      "details": [{ "pos": "adjective", "means": [{ "mean": "chưa từng có, chưa từng xảy ra", "example": "The company has enjoyed unprecedented success this year." }] }]
+    }
+  }
+}

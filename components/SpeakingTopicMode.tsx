@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { SpeakingQuestion, SpeakingFeedback, VocabularyItem } from '../types';
-import { generateSpeakingQuestions, evaluateSpeakingSession } from '../services/speakingService';
+import { OllamaService } from '../services/ollamaService';
 import { vocabStorage } from '../services/localDataService';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
 
@@ -54,10 +54,10 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
     setGeneratedQs([]);
     try {
       const topicVocab = vocabList.filter(v => v.topic === selectedTopic);
-      const qs = await generateSpeakingQuestions(selectedTopic, topicVocab);
+      const qs = await OllamaService.generateSpeakingQuestions(selectedTopic, topicVocab);
       setGeneratedQs(qs);
     } catch (e) {
-      alert("Lỗi kết nối AI. Vui lòng kiểm tra lại API Key.");
+      alert("Lỗi kết nối AI.");
     } finally {
       setIsGenerating(false);
     }
@@ -112,9 +112,14 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
           const base64Audio = (reader.result as string).split(',')[1];
           try {
             const currentQ = practiceQs[currentQIndex];
-            const result = await evaluateSpeakingSession(currentQ.question, base64Audio, currentQ.sampleAnswer);
+            // First, perform Speech-to-Text (STT)
+            const transcription = await OllamaService.speechToText(base64Audio);
+
+            // Then, evaluate speaking using the transcription
+            // Vì OllamaService.evaluateSpeaking yêu cầu text, ta dùng transcription từ STT
+            const result = await OllamaService.evaluateSpeaking(currentQ.question, transcription);
             setFeedback(result);
-          } catch (err) {
+          } catch (err: any) {
             alert("Lỗi phân tích giọng nói.");
           } finally {
             setIsProcessing(false);
@@ -154,19 +159,19 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
       <div className="h-full flex flex-col bg-white">
         <div className="bg-slate-50 border-b px-6 py-4 flex items-center gap-4">
           <button onClick={onBack} className="p-2 bg-white border rounded-xl hover:bg-slate-100"><svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg></button>
-          <h2 className="text-lg font-black text-slate-800 uppercase">Topic Challenge (Part 2)</h2>
+          <h2 className="text-lg font-black text-slate-800 uppercase">Topic Challenge</h2>
         </div>
         <div className="flex-1 p-8 flex items-center justify-center">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
-            <button onClick={() => setView('generator')} className="group bg-emerald-50 border-2 border-emerald-100 hover:border-emerald-500 hover:bg-emerald-100 p-8 rounded-[40px] text-left transition-all shadow-lg active:scale-95">
-               <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-xl shadow-emerald-200 group-hover:scale-110 transition-transform">⚡</div>
-               <h3 className="text-2xl font-black text-emerald-900 uppercase mb-2">AI Generator</h3>
-               <p className="text-sm font-medium text-emerald-700">Tạo bộ câu hỏi mới từ chủ đề & từ vựng có sẵn.</p>
+            <button onClick={() => setView('generator')} className="group bg-emerald-50 border-2 border-emerald-100 hover:border-emerald-500 hover:bg-emerald-100 p-6 rounded-2xl text-left transition-all shadow-lg active:scale-95">
+               <div className="w-12 h-12 bg-emerald-500 text-white rounded-xl flex items-center justify-center text-2xl mb-4 shadow-xl shadow-emerald-200 group-hover:scale-110 transition-transform">⚡</div>
+               <h3 className="text-xl font-black text-emerald-900 uppercase mb-1">AI Generator</h3>
+               <p className="text-xs font-medium text-emerald-700">Tạo bộ câu hỏi mới từ chủ đề & từ vựng có sẵn.</p>
             </button>
-            <button onClick={() => setView('library')} className="group bg-indigo-50 border-2 border-indigo-100 hover:border-indigo-500 hover:bg-indigo-100 p-8 rounded-[40px] text-left transition-all shadow-lg active:scale-95">
-               <div className="w-16 h-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-xl shadow-indigo-200 group-hover:scale-110 transition-transform">📂</div>
-               <h3 className="text-2xl font-black text-indigo-900 uppercase mb-2">Question Bank</h3>
-               <p className="text-sm font-medium text-indigo-700">Kho lưu trữ câu hỏi chủ đề. Luyện tập lại bất cứ lúc nào.</p>
+            <button onClick={() => setView('library')} className="group bg-indigo-50 border-2 border-indigo-100 hover:border-indigo-500 hover:bg-indigo-100 p-6 rounded-2xl text-left transition-all shadow-lg active:scale-95">
+               <div className="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-2xl mb-4 shadow-xl shadow-indigo-200 group-hover:scale-110 transition-transform">📂</div>
+               <h3 className="text-xl font-black text-indigo-900 uppercase mb-1">Question Bank</h3>
+               <p className="text-xs font-medium text-indigo-700">Kho lưu trữ câu hỏi chủ đề. Luyện tập lại bất cứ lúc nào.</p>
             </button>
           </div>
         </div>
@@ -292,7 +297,7 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
                </div>
 
                {feedback && (
-                  <div className="bg-white rounded-[32px] p-8 shadow-2xl border border-indigo-50 animate-in slide-in-from-bottom-4">
+                  <div className="bg-white rounded-2xl p-6 shadow-2xl border border-indigo-50 animate-in slide-in-from-bottom-4">
                     <div className="flex items-center gap-4 mb-6">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-lg ${feedback.score >= 80 ? 'bg-emerald-500 shadow-emerald-200' : 'bg-amber-500 shadow-amber-200'}`}>{feedback.score}</div>
                         <div>

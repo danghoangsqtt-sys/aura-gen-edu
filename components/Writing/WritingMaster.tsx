@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { evaluateWriting } from '../../services/geminiService';
+import { OllamaService } from '../../services/ollamaService';
 
 const WritingMaster: React.FC = () => {
   const [text, setText] = useState('');
@@ -22,11 +22,11 @@ const WritingMaster: React.FC = () => {
     setError(null);
     setFeedback(null);
 
-    console.info(`[WritingMaster] -> [Action]: Sending text to Gemini API for evaluation. Word count: ${wordCount}`);
+    console.info(`[WritingMaster] -> [Action]: Sending text to OllamaService for evaluation. Word count: ${wordCount}`);
 
     try {
-      const response = await evaluateWriting(text);
-      setFeedback(response);
+      const result = await OllamaService.evaluateWriting(text);
+      setFeedback(result);
       console.info('[WritingMaster] -> [Success]: Received evaluation feedback from API.');
     } catch (err: any) {
       const errorMessage = err.message || 'Lỗi kết nối. Vui lòng thử lại sau.';
@@ -45,7 +45,7 @@ const WritingMaster: React.FC = () => {
         <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-black text-slate-800 tracking-tight">📝 Phòng Luyện Viết</h2>
-            <p className="text-slate-500 text-sm mt-1">Mục tiêu: B2 Aptis ESOL</p>
+            <p className="text-slate-500 text-sm mt-1">Mục tiêu: Mọi cấp độ (A1 - C2)</p>
           </div>
           <button
             onClick={handleEvaluate}

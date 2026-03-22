@@ -10,11 +10,13 @@ export const STORAGE_KEYS = {
   LEADERBOARD: 'edugen_leaderboard',
   SPEAKING_MANUAL: 'edugen_speaking_manual',
   SPEAKING_TOPIC_BANK: 'edugen_speaking_topic_bank',
-  VOCAB_CANVAS: 'edugen_vocab_canvas'
+  VOCAB_CANVAS: 'edugen_vocab_canvas',
+  STUDY_DOCUMENTS: 'edugen_study_documents',
+  DOCUMENT_FOLDERS: 'edugen_document_folders'
 };
 
 const isElectron = () => {
-  return typeof window !== 'undefined' && (window as any).require && typeof (window as any).require === 'function';
+  return typeof window !== 'undefined' && !!(window as any).electronAPI;
 };
 
 export const storage = {
@@ -24,8 +26,7 @@ export const storage = {
   get: async <T>(key: string, defaultValue: T): Promise<T> => {
     if (isElectron()) {
       try {
-        const { ipcRenderer } = (window as any).require('electron');
-        const data = await ipcRenderer.invoke('db-read', key);
+        const data = await (window as any).electronAPI.invoke('db-read', key);
         if (data === null || data === undefined) return defaultValue;
         return data as T;
       } catch (e) {
@@ -57,8 +58,7 @@ export const storage = {
   set: async (key: string, value: any): Promise<void> => {
     if (isElectron()) {
       try {
-        const { ipcRenderer } = (window as any).require('electron');
-        await ipcRenderer.invoke('db-write', key, value);
+        await (window as any).electronAPI.invoke('db-write', key, value);
         return;
       } catch (e) {
         console.error(`[Storage Adapter] -> [Electron ERROR] Write error for ${key}:`, e);

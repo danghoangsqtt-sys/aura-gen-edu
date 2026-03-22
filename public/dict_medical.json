@@ -1,0 +1,78 @@
+{
+  "a": {
+    "asthma": {
+      "vocabulary": "asthma",
+      "ipa": "/ˈæs.mə/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "bệnh hen suyễn", "example": "He has suffered from asthma since childhood." }] }]
+    },
+    "anemia": {
+      "vocabulary": "anemia",
+      "ipa": "/əˈniː.mi.ə/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "bệnh thiếu máu", "example": "Iron deficiency can lead to anemia." }] }]
+    },
+    "appendicitis": {
+      "vocabulary": "appendicitis",
+      "ipa": "/əˌpen.dəˈsaɪ.tɪs/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "viêm ruột thừa", "example": "She was rushed to the hospital with acute appendicitis." }] }]
+    }
+  },
+  "b": {
+    "biopsy": {
+      "vocabulary": "biopsy",
+      "ipa": "/ˈbaɪ.ɒp.si/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "sinh thiết (xét nghiệm tế bào)", "example": "The doctor ordered a skin biopsy to check for cancer." }] }]
+    },
+    "bacteria": {
+      "vocabulary": "bacteria",
+      "ipa": "/bækˈtɪə.ri.ə/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "vi khuẩn", "example": "Some bacteria are useful for the human body." }] }]
+    }
+  },
+  "c": {
+    "cardiology": {
+      "vocabulary": "cardiology",
+      "ipa": "/ˌkɑː.diˈɒl.ə.dʒi/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "khoa tim mạch, tim mạch học", "example": "She is specializing in cardiology at the medical university." }] }]
+    },
+    "chemotherapy": {
+      "vocabulary": "chemotherapy",
+      "ipa": "/ˌkiː.məʊˈθer.ə.pi/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "hóa trị", "example": "Chemotherapy is a common treatment for many types of cancer." }] }]
+    }
+  },
+  "d": {
+    "diagnosis": {
+      "vocabulary": "diagnosis",
+      "ipa": "/ˌdaɪ.əɡˈnəʊ.sɪs/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "chẩn đoán", "example": "A clear diagnosis is required before starting any treatment." }] }]
+    }
+  },
+  "h": {
+    "hypertension": {
+      "vocabulary": "hypertension",
+      "ipa": "/ˌhaɪ.pəˈten.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "huyết áp cao", "example": "Stress can contribute to hypertension." }] }]
+    }
+  },
+  "i": {
+    "inflammation": {
+      "vocabulary": "inflammation",
+      "ipa": "/ˌɪn.fləˈmeɪ.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "viêm nhiễm", "example": "Aspirin can help reduce inflammation and pain." }] }]
+    }
+  },
+  "p": {
+    "pediatrics": {
+      "vocabulary": "pediatrics",
+      "ipa": "/ˌpiː.diˈæt.rɪks/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "nhi khoa", "example": "Pediatrics is the branch of medicine dealing with children." }] }]
+    }
+  },
+  "v": {
+    "vaccination": {
+      "vocabulary": "vaccination",
+      "ipa": "/ˌvæk.sɪˈneɪ.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "tiêm chủng vaccine", "example": "Widespread vaccination has eradicated smallpox." }] }]
+    }
+  }
+}

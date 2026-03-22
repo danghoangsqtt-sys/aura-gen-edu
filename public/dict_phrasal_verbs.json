@@ -1,0 +1,77 @@
+{
+  "b": {
+    "bring up": {
+      "vocabulary": "bring up",
+      "ipa": "/brɪŋ ʌp/",
+      "details": [
+        { "pos": "phrasal verb", "means": [{ "mean": "đề cập đến một chủ đề nào đó, bắt đầu nói về chuyện gì", "example": "Why did you have to bring up his ex-girlfriend at the party?" }] },
+        { "pos": "phrasal verb", "means": [{ "mean": "nuôi nấng, dạy dỗ trẻ em", "example": "She was brought up by her grandparents." }] }
+      ]
+    },
+    "break down": {
+      "vocabulary": "break down",
+      "ipa": "/breɪk daʊn/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "bị hỏng (máy móc), suy sụp (tinh thần)", "example": "The car broke down in the middle of the highway." }] }]
+    }
+  },
+  "l": {
+    "look forward to": {
+      "vocabulary": "look forward to",
+      "ipa": "/lʊk ˈfɔː.wəd tuː/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "mong đợi, háo hức chờ đợi (thường + V-ing/Noun)", "example": "I'm really looking forward to seeing you next week." }] }]
+    },
+    "look after": {
+      "vocabulary": "look after",
+      "ipa": "/lʊk ˈɑːf.tər/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "chăm sóc, trông nom", "example": "She is looking after her younger brother while her parents are away." }] }]
+    },
+    "look up to": {
+      "vocabulary": "look up to",
+      "ipa": "/lʊk ʌp tuː/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "ngưỡng mộ, kính trọng", "example": "He has always looked up to his older brother." }] }]
+    }
+  },
+  "p": {
+    "put off": {
+      "vocabulary": "put off",
+      "ipa": "/pʊt ɒf/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "trì hoãn, hoãn lại một việc gì đó", "example": "We had to put off the meeting until tomorrow because of the rain." }] }]
+    },
+    "put up with": {
+      "vocabulary": "put up with",
+      "ipa": "/pʊt ʌp wɪð/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "chịu đựng", "example": "I can't put up with his constant complaining anymore." }] }]
+    }
+  },
+  "c": {
+    "call off": {
+      "vocabulary": "call off",
+      "ipa": "/kɔːl ɒf/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "hủy bỏ", "example": "They had to call off the football match due to bad weather." }] }]
+    },
+    "come across": {
+      "vocabulary": "come across",
+      "ipa": "/kʌm əˈkrɒs/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "tình cờ gặp, tình cờ thấy", "example": "I came across an old photo while cleaning the attic." }] }]
+    }
+  },
+  "f": {
+    "find out": {
+      "vocabulary": "find out",
+      "ipa": "/faɪnd daʊn/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "tìm hiểu, khám phá ra thông tin", "example": "I need to find out what time the train leaves." }] }]
+    }
+  },
+  "g": {
+    "get along": {
+      "vocabulary": "get along",
+      "ipa": "/ɡet əˈlɒŋ/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "hòa hợp, thân thiện với ai", "example": "I get along very well with my new neighbors." }] }]
+    },
+    "give up": {
+      "vocabulary": "give up",
+      "ipa": "/ɡɪv ʌp/",
+      "details": [{ "pos": "phrasal verb", "means": [{ "mean": "từ bỏ, bỏ cuộc", "example": "He decided to give up smoking for his health." }] }]
+    }
+  }
+}

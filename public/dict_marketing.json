@@ -1,0 +1,80 @@
+{
+  "b": {
+    "branding": {
+      "vocabulary": "branding",
+      "ipa": "/ˈbræn.dɪŋ/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "xây dựng thương hiệu", "example": "Successful branding is key to customer loyalty." }] }]
+    },
+    "benchmark": {
+      "vocabulary": "benchmark",
+      "ipa": "/ˈbentʃ.mɑːrk/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "điểm chuẩn, mốc so sánh", "example": "Our competitors' sales figures are a benchmark for our performance." }] }]
+    }
+  },
+  "c": {
+    "campaign": {
+      "vocabulary": "campaign",
+      "ipa": "/kæmˈpeɪn/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "chiến dịch (quảng cáo, tiếp thị)", "example": "Our new social media campaign targets young adults." }] }]
+    },
+    "consumer": {
+      "vocabulary": "consumer",
+      "ipa": "/kənˈsjuː.mər/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "người tiêu dùng", "example": "Consumer confidence is rising as the economy improves." }] }]
+    }
+  },
+  "d": {
+    "demographics": {
+      "vocabulary": "demographics",
+      "ipa": "/ˌdem.əˈɡræf.ɪks/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "nhân khẩu học", "example": "The marketing department is studying the demographics of our customer base." }] }]
+    }
+  },
+  "e": {
+    "engagement": {
+      "vocabulary": "engagement",
+      "ipa": "/ɪnˈɡeɪdʒ.mənt/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "sự tương tác, gắn kết", "example": "The new social media post received a high level of user engagement." }] }]
+    }
+  },
+  "l": {
+    "lead": {
+      "vocabulary": "lead",
+      "ipa": "/liːd/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "khách hàng tiềm năng", "example": "The marketing team generated 500 new leads last week." }] }]
+    },
+    "loyalty": {
+      "vocabulary": "loyalty",
+      "ipa": "/ˈlɔɪ.əl.ti/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "lòng trung thành", "example": "Customer loyalty programs help retain existing customers." }] }]
+    }
+  },
+  "m": {
+    "merchandise": {
+      "vocabulary": "merchandise",
+      "ipa": "/ˈmɜː.tʃən.daɪs/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "hàng hóa", "example": "The store offers a wide variety of merchandise at competitive prices." }] }]
+    }
+  },
+  "o": {
+    "optimization": {
+      "vocabulary": "optimization",
+      "ipa": "/ˌɒp.tɪ.maɪˈzeɪ.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "sự tối ưu hóa", "example": "Search engine optimization (SEO) helps improve website rankings." }] }]
+    }
+  },
+  "p": {
+    "positioning": {
+      "vocabulary": "positioning",
+      "ipa": "/pəˈzɪʃ.ən.ɪŋ/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "định vị thương hiệu", "example": "A clear brand positioning strategy is essential for market success." }] }]
+    }
+  },
+  "s": {
+    "segmentation": {
+      "vocabulary": "segmentation",
+      "ipa": "/ˌseɡ.menˈteɪ.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "phân khúc (thị trường)", "example": "Market segmentation allows companies to target specific groups of consumers." }] }]
+    }
+  }
+}

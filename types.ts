@@ -1,8 +1,11 @@
 
 export enum Difficulty {
-  BASIC = 'Cơ bản',
-  INTERMEDIATE = 'Trung cấp',
-  ADVANCED = 'Nâng cao'
+  A1 = 'A1 (Cơ bản)',
+  A2 = 'A2 (Sơ cấp)',
+  B1 = 'B1 (Trung cấp)',
+  B2 = 'B2 (Trên trung cấp)',
+  C1 = 'C1 (Cao cấp)',
+  C2 = 'C2 (Thành thạo)'
 }
 
 export enum BloomLevel {
@@ -42,6 +45,8 @@ export interface Question {
   explanation: string;
   bloomLevel: BloomLevel;
   points?: number;
+  questionImage?: string;
+  optionImages?: Record<number, string>;
 }
 
 export interface ExamConfig {
@@ -135,6 +140,56 @@ export interface SavedWord {
   example?: string;
 }
 
+// --- HYBRID LEXICON TYPES ---
+export interface DictMeaning {
+  mean: string;
+  example: string;
+  examples?: string[]; // Multiple examples support
+  synonyms?: string[]; // Meaning-specific synonyms
+  antonyms?: string[]; // Meaning-specific antonyms
+  context?: string;    // e.g. "Music", "Mathematics", "Colloquial"
+}
+
+export interface SpecializedMeaning {
+  field: string; // e.g. "Kỹ thuật", "Âm nhạc"
+  meanings: DictMeaning[];
+}
+
+export interface CompoundWord {
+  word: string;
+  meaning: string;
+  example?: string;
+}
+
+export interface DictDetail {
+  pos: string;
+  means: DictMeaning[];
+}
+
+export interface HybridDictEntry {
+  vocabulary: string;
+  ipa: string; // fallback
+  phonetics?: { uk: string; us: string };
+  details: {
+    pos: string;
+    means: DictMeaning[];
+  }[];
+  domain?: string;
+  etymology?: string;
+  collocations?: string[];
+  wordFamily?: string[];
+  specializedMeanings?: SpecializedMeaning[];
+  compoundWords?: CompoundWord[];
+  idiomsAndPhrasals?: { phrase: string; meaning: string; example: string }[];
+  usageNotes?: string;
+}
+
+export interface HybridDictionary {
+  [letter: string]: {
+    [word: string]: HybridDictEntry;
+  };
+}
+
 export interface VocabFolder {
   id: string;
   name: string;
@@ -158,4 +213,30 @@ export interface PersonalVocabData {
   inbox: SavedWord[];
   folders: VocabFolder[];
   topics?: MindMapTopic[];
+}
+
+// --- STUDY DOCUMENT TYPES ---
+export type DocFileType = 'text' | 'pdf' | 'docx' | 'pptx' | 'video';
+
+export interface StudyDocument {
+  id: string;
+  title: string;
+  description?: string;
+  content: string;
+  folderId: string | null;
+  tags?: string[];
+  fileType: DocFileType;
+  fileName?: string;
+  fileSize?: number;
+  fileStorageKey?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocumentFolder {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string;
+  createdAt: string;
 }

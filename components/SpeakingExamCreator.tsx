@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SpeakingQuestion, SpeakingExamConfig, VocabularyItem } from '../types';
-import { generateSpeakingQuestions } from '../services/speakingService';
+import { OllamaService } from '../services/ollamaService';
 import SpeakingExamPrint from './SpeakingExamPrint';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
 import { vocabStorage } from '../services/localDataService';
@@ -62,7 +62,7 @@ const SpeakingExamCreator: React.FC<Props> = ({ onBack, initialManualQuestions }
     setIsGenerating(true);
     try {
       const topicVocab = vocabList.filter(v => v.topic === selectedTopic);
-      const qs = await generateSpeakingQuestions(selectedTopic, topicVocab);
+      const qs = await OllamaService.generateSpeakingQuestions(selectedTopic, topicVocab);
       setTopicQuestions(qs);
     } catch (e) {
       alert("Lỗi kết nối AI.");
@@ -208,6 +208,15 @@ const SpeakingExamCreator: React.FC<Props> = ({ onBack, initialManualQuestions }
                     >
                       <option value="">-- Chọn chủ đề --</option>
                       {topics.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <select 
+                       className="w-32 bg-slate-50 border p-2 rounded-lg text-xs font-bold outline-none"
+                    >
+                       <option value="A1">A1</option>
+                       <option value="A2">A2</option>
+                       <option value="B1">B1</option>
+                       <option value="B2">B2</option>
+                       <option value="C1">C1</option>
                     </select>
                     <button 
                       onClick={handleGenerateTopic}

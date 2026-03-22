@@ -1,0 +1,76 @@
+{
+  "a": {
+    "algorithm": {
+      "vocabulary": "algorithm",
+      "ipa": "/ˈæl.ɡə.rɪ.ðəm/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "thuật toán", "example": "The search engine uses a complex algorithm to rank results." }] }]
+    },
+    "api": {
+      "vocabulary": "api",
+      "ipa": "/ˌeɪ.piˈaɪ/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "giao diện lập trình ứng dụng", "example": "Developers use the Google Maps API to embed maps into their websites." }] }]
+    },
+    "authentication": {
+      "vocabulary": "authentication",
+      "ipa": "/ɔːˌθen.tɪˈkeɪ.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "xác thực (danh tính)", "example": "Two-factor authentication adds an extra layer of security." }] }]
+    }
+  },
+  "b": {
+    "backend": {
+      "vocabulary": "backend",
+      "ipa": "/ˈbæk.end/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "hậu phương, phần xử lý máy chủ", "example": "The backend is responsible for data processing and storage." }] }]
+    },
+    "bitrate": {
+      "vocabulary": "bitrate",
+      "ipa": "/ˈbɪt.reɪt/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "tỉ lệ bit", "example": "A higher bitrate generally means better audio quality." }] }]
+    }
+  },
+  "c": {
+    "ciphertext": {
+      "vocabulary": "ciphertext",
+      "ipa": "/ˈsaɪ.fə.tekst/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "văn bản mã hóa", "example": "Encryption turns plaintext into ciphertext." }] }]
+    },
+    "compiler": {
+      "vocabulary": "compiler",
+      "ipa": "/kəmˈpaɪ.lər/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "trình biên dịch", "example": "The compiler translates source code into machine code." }] }]
+    }
+  },
+  "d": {
+    "database": {
+      "vocabulary": "database",
+      "ipa": "/ˈdeɪ.tə.beɪs/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "cơ sở dữ liệu", "example": "The application stores user profiles in a secure database." }] }]
+    },
+    "deployment": {
+      "vocabulary": "deployment",
+      "ipa": "/dɪˈplɔɪ.mənt/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "triển khai (phần mềm)", "example": "Continuous deployment automates the release process." }] }]
+    }
+  },
+  "e": {
+    "encryption": {
+      "vocabulary": "encryption",
+      "ipa": "/ɪnˈkrɪp.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "mã hóa", "example": "SSL encryption protects your data during transmission." }] }]
+    }
+  },
+  "f": {
+    "frontend": {
+      "vocabulary": "frontend",
+      "ipa": "/ˈfrʌnt.end/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "tiền phương, giao diện người dùng", "example": "React is a popular library for building frontends." }] }]
+    }
+  },
+  "r": {
+    "repository": {
+      "vocabulary": "repository",
+      "ipa": "/rɪˈpɒz.ɪ.tər.i/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "kho lưu trữ (mã nguồn)", "example": "The code is hosted in a public GitHub repository." }] }]
+    }
+  }
+}

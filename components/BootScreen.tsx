@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const { ipcRenderer } = window.require('electron');
+const getElectronAPI = () => (window as any).electronAPI;
 
 interface BootScreenProps {
   onReady: () => void;
@@ -12,7 +12,15 @@ const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleLog = (_event: any, message: string) => {
+    const api = getElectronAPI();
+    if (!api) {
+      // No Electron IPC — auto-proceed after a short delay
+      setLogs(prev => [...prev, "[SYSTEM] Web mode detected. Skipping backend boot..."]);
+      const timer = setTimeout(() => setIsBackendReady(true), 2000);
+      return () => clearTimeout(timer);
+    }
+
+    const handleLog = (message: string) => {
       setLogs(prev => [...prev, message]);
       
       // Check for readiness
@@ -21,10 +29,21 @@ const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
       }
     };
 
-    ipcRenderer.on('backend-log', handleLog);
+    // 1. Bật tai nghe
+    const cleanup = api.on('backend-log', handleLog);
+
+    // 2. Ra lệnh cho Electron khởi động Python
+    api.send('frontend-ready');
+
+    // 3. Timeout fallback: If Python logs never arrive after 15s, auto-proceed
+    const fallbackTimer = setTimeout(() => {
+      setLogs(prev => [...prev, "[SYSTEM] Backend timeout. Proceeding anyway..."]);
+      setIsBackendReady(true);
+    }, 15000);
 
     return () => {
-      ipcRenderer.removeListener('backend-log', handleLog);
+      cleanup();
+      clearTimeout(fallbackTimer);
     };
   }, []);
 

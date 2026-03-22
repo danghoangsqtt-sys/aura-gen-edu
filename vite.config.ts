@@ -6,7 +6,9 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   define: {
-    'global': 'window',
+    // Giả lập process để các thư viện Node.js không bị crash trên trình duyệt
+    'process.env': {},
+    'global': 'globalThis',
   },
   base: './',
   resolve: {
@@ -19,6 +21,7 @@ export default defineConfig({
       'pixi.js',
       'pixi-live2d-display',
     ],
+    exclude: ['virtual:cc-init'],
   },
   build: {
     outDir: 'dist',
@@ -27,10 +30,16 @@ export default defineConfig({
       include: [/pixi-live2d-display/, /node_modules/],
       transformMixedEsModules: true,
     },
+    rollupOptions: {
+      external: [/backend\/.*/]
+    },
     target: 'esnext'
   },
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      ignored: ['**/backend/**'],
+    }
   }
 });

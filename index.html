@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.tailwindcss.com https://cubism.live2d.com https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://raw.githubusercontent.com https://cdn.jsdelivr.net https://api.dictionaryapi.dev https://api.datamuse.com https://cloud.appwrite.io https://sgp.cloud.appwrite.io; img-src 'self' data: https:; media-src 'self' https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.tailwindcss.com https://cubism.live2d.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://raw.githubusercontent.com https://cdn.jsdelivr.net https://api.dictionaryapi.dev https://api.datamuse.com https://cloud.appwrite.io https://sgp.cloud.appwrite.io; worker-src 'self' blob:; media-src 'self' blob: data: http://localhost:* http://127.0.0.1:* https:;">
     
-    <title>EduGen Studio Professional</title>
+    <title>Aura Gen - Chuyên Gia Tiếng Anh AI</title>
     <script src="/live2d.min.js"></script>
     <script src="/live2dcubismcore.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -110,8 +110,15 @@
 
         .font-times { font-family: 'Times New Roman', serif; }
 
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.6); }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
         
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(15px); }

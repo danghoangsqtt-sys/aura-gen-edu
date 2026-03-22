@@ -1,0 +1,68 @@
+{
+  "a": {
+    "agenda": {
+      "vocabulary": "agenda",
+      "ipa": "/əˈdʒen.də/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "chương trình nghị sự, lịch trình họp", "example": "The first item on the agenda is the budget report." }] }]
+    },
+    "applicant": {
+      "vocabulary": "applicant",
+      "ipa": "/ˈæp.lɪ.kənt/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "người ứng tuyển", "example": "We are currently reviewing applications from over 100 applicants." }] }]
+    }
+  },
+  "c": {
+    "collaborate": {
+      "vocabulary": "collaborate",
+      "ipa": "/kəˈlæb.ə.reɪt/",
+      "details": [{ "pos": "verb", "means": [{ "mean": "hợp tác, phối hợp", "example": "Our team will collaborate with the design department on this project." }] }]
+    },
+    "compensation": {
+      "vocabulary": "compensation",
+      "ipa": "/ˌkɒm.penˈseɪ.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "khoản đền bù, thù lao", "example": "The company offers a competitive compensation package." }] }]
+    }
+  },
+  "d": {
+    "deadline": {
+      "vocabulary": "deadline",
+      "ipa": "/ˈded.laɪn/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "hạn chót", "example": "We are working hard to meet the Friday deadline." }] }]
+    }
+  },
+  "e": {
+    "entrepreneur": {
+      "vocabulary": "entrepreneur",
+      "ipa": "/ˌɒn.trə.prəˈnɜːr/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "nhà khởi nghiệp, doanh nhân", "example": "He is a successful entrepreneur who started his first company at 20." }] }]
+    }
+  },
+  "i": {
+    "inventory": {
+      "vocabulary": "inventory",
+      "ipa": "/ˈɪn.vən.tər.i/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "hàng tồn kho", "example": "The store needs to clear out its inventory before the new season starts." }] }]
+    }
+  },
+  "n": {
+    "negotiate": {
+      "vocabulary": "negotiate",
+      "ipa": "/nəˈɡəʊ.ʃi.eɪt/",
+      "details": [{ "pos": "verb", "means": [{ "mean": "đàm phán, thương lượng", "example": "The two companies are still negotiating the terms of the merger." }] }]
+    }
+  },
+  "p": {
+    "promotion": {
+      "vocabulary": "promotion",
+      "ipa": "/prəˈməʊ.ʃən/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "thăng chức, sự quảng bá", "example": "She received a promotion to Senior Manager after just one year." }] }]
+    }
+  },
+  "q": {
+    "quota": {
+      "vocabulary": "quota",
+      "ipa": "/ˈkwəʊ.tə/",
+      "details": [{ "pos": "noun", "means": [{ "mean": "chỉ tiêu, hạn ngạch", "example": "The sales team has already exceeded its quarterly quota." }] }]
+    }
+  }
+}
