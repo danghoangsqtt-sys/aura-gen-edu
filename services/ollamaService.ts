@@ -591,9 +591,8 @@ Trường "vocabulary" BẮT BUỘC liệt kê TẤT CẢ các từ với đầy
   /**
    * 5. Tạo câu hỏi luyện nói (Speaking Lab)
    */
-  static async generateSpeakingQuestions(topic: string, vocabList: VocabularyItem[]): Promise<any[]> {
-    const words = vocabList.map(v => v.word).join(", ");
-    const prompt = `Create 5 speaking questions for topic: "${topic}" using words: ${words}. Output JSON Array.`;
+  static async generateSpeakingQuestions(topic: string, level: string): Promise<any[]> {
+    const prompt = `Create 5 speaking interview questions for topic: "${topic}" at CEFR level ${level}. Each question must have: "question", "sampleAnswer" (2-4 sentences, natural), "difficulty" (e.g. "B1"). Output JSON Array.`;
     return this.generateJSON<any[]>(prompt);
   }
 

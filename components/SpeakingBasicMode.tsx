@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SpeakingQuestion, SpeakingFeedback } from '../types';
 import { OllamaService } from '../services/ollamaService';
+import { AIConfigService } from '../services/aiConfigService';
+import { evaluateSpeakingSession } from '../services/speakingService';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
 import { defaultSpeakingPart1, defaultSpeakingTopics } from '../data/speakingPart1Data';
 
@@ -30,6 +32,7 @@ const SpeakingBasicMode: React.FC<Props> = ({ onBack }) => {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -191,6 +194,13 @@ const SpeakingBasicMode: React.FC<Props> = ({ onBack }) => {
       };
 
       mediaRecorder.onstop = async () => {
+        const duration = Date.now() - recordingStartRef.current;
+        if (duration < 1500) {
+          // Quá ngắn → bỏ qua
+          alert('⏱️ Bạn cần nói ít nhất 2 giây. Hãy thử lại.');
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
         setIsProcessing(true);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const reader = new FileReader();
@@ -199,11 +209,21 @@ const SpeakingBasicMode: React.FC<Props> = ({ onBack }) => {
           const base64Audio = (reader.result as string).split(',')[1];
           try {
             const currentQ = filteredQuestions[currentQIndex];
-            const transcription = await OllamaService.speechToText(base64Audio);
-            const result = await OllamaService.evaluateSpeaking(currentQ.question, transcription);
+            const provider = AIConfigService.getProvider();
+
+            let result: SpeakingFeedback;
+            if (provider === 'gemini') {
+              // Gemini: gửi audio trực tiếp, bypass STT
+              result = await evaluateSpeakingSession(currentQ.question, base64Audio, currentQ.sampleAnswer);
+            } else {
+              // Ollama: STT trước → evaluate bằng text
+              const transcription = await OllamaService.speechToText(base64Audio);
+              result = await OllamaService.evaluateSpeaking(currentQ.question, transcription);
+            }
             setFeedback(result);
           } catch (err) {
-            alert("Lỗi phân tích giọng nói.");
+            console.error('[SpeakingBasic] Evaluation error:', err);
+            alert('⚠️ Lỗi phân tích AI. Vui lòng nói to và rõ ràng hơn, sau đó thử lại.');
           } finally {
             setIsProcessing(false);
           }
@@ -212,6 +232,7 @@ const SpeakingBasicMode: React.FC<Props> = ({ onBack }) => {
       };
 
       mediaRecorder.start();
+      recordingStartRef.current = Date.now();
       setIsRecording(true);
       setFeedback(null);
     } catch (err) {

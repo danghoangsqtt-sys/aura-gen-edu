@@ -32,7 +32,7 @@ const SpeakingExamPrint: React.FC<Props> = ({ config, questions, mode }) => {
             <p className="text-[12pt] italic">Thời gian chuẩn bị và nói: {config.duration} phút</p>
             <div className="mt-4 border border-black p-4 text-left text-[11pt] w-2/3 mx-auto">
               <p>Họ và tên thí sinh: ............................................................................</p>
-              <p className="mt-2">Lớp: ........................................... SBD: ......................................</p>
+              <p className="mt-2">Lớp: {config.className || '............................................'} SBD: ......................................</p>
             </div>
           </>
         )}
@@ -42,8 +42,16 @@ const SpeakingExamPrint: React.FC<Props> = ({ config, questions, mode }) => {
       <div className="space-y-8">
         {questions.map((q, index) => (
           <div key={q.id} className="break-inside-avoid">
-            <h3 className="font-bold text-[12pt] uppercase mb-3 bg-slate-100 p-1">Phần {index + 1}: Speaking Question</h3>
+            <h3 className="font-bold text-[12pt] uppercase mb-3 bg-slate-100 p-1">
+              Phần {index + 1}: Speaking Question
+              {mode === 'teacher' && q.topic && <span className="text-[10pt] font-normal italic ml-2">({q.topic}{q.difficulty ? ` — ${q.difficulty}` : ''})</span>}
+            </h3>
             <div className="pl-4">
+              {q.imageUrl && (
+                <div className="mb-3">
+                  <img src={q.imageUrl} alt="Question illustration" className="max-w-[300px] h-auto border border-slate-300 rounded" />
+                </div>
+              )}
               <div className="flex items-start mb-2">
                 <span className="font-bold mr-2 text-[13pt]">Q:</span>
                 <p className="text-[13pt] font-semibold leading-relaxed">{q.question}</p>

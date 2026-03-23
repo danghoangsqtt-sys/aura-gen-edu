@@ -36,7 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'open-file-native',
       'save-writing-week',
       'read-writing-week',
-      'list-writing-weeks'
+      'list-writing-weeks',
+      'save-speaking-image',
+      'read-speaking-image'
     ];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);

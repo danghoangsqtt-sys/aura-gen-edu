@@ -1,10 +1,10 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { VocabularyItem, SpeakingQuestion, SpeakingFeedback } from "../types";
+import { SpeakingQuestion, SpeakingFeedback } from "../types";
+import { AIConfigService } from "./aiConfigService";
 
 const getApiKey = (): string => {
-  const manualKey = localStorage.getItem('edugen_api_key');
-  return manualKey || process.env.API_KEY || '';
+  return AIConfigService.getGeminiApiKey() || '';
 };
 
 const cleanJsonResponse = (text: string): string => {
@@ -12,26 +12,35 @@ const cleanJsonResponse = (text: string): string => {
 };
 
 /**
- * Tạo câu hỏi phỏng vấn dựa trên danh sách từ vựng của chủ đề (Topic Mode)
+ * Tạo câu hỏi phỏng vấn dựa trên chủ đề và trình độ (Topic Mode — không phụ thuộc Vocab Bank)
  */
-export const generateSpeakingQuestions = async (topic: string, vocabList: VocabularyItem[]): Promise<SpeakingQuestion[]> => {
+export const generateSpeakingQuestions = async (topic: string, level: string): Promise<SpeakingQuestion[]> => {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("Chưa cấu hình API Key.");
 
   const ai = new GoogleGenAI({ apiKey });
-  const words = vocabList.map(v => v.word).join(", ");
   
   const prompt = `
-    Bạn là một giám khảo thi nói tiếng Anh IELTS.
-    Hãy tạo 5 câu hỏi phỏng vấn ngắn (Speaking Part 1 & 2) xoay quanh chủ đề: "${topic}".
-    Yêu cầu học sinh phải sử dụng được một số từ vựng sau: ${words}.
-    Đặc biệt: Hãy cung cấp một "sampleAnswer" (câu trả lời mẫu) ngắn gọn, hay và tự nhiên cho mỗi câu hỏi để giáo viên dùng làm đáp án.
-    Trả về định dạng JSON array.
+    You are an expert IELTS Speaking examiner.
+    Generate 5 speaking interview questions (Part 1 & 2) about the topic: "${topic}".
+    The questions MUST be appropriate for CEFR level: ${level}.
+    
+    Level guidelines:
+    - A1-A2 (Beginner): Simple, personal questions. Use common vocabulary. Short expected answers.
+    - B1-B2 (Intermediate): Opinion-based questions. Use topic-specific vocabulary. Expect detailed answers.
+    - C1-C2 (Advanced): Abstract, analytical questions. Use sophisticated vocabulary. Expect complex argumentation.
+    
+    For each question, provide:
+    - "question": The speaking question text.
+    - "sampleAnswer": A natural, well-structured model answer (2-4 sentences) matching the level.
+    - "difficulty": The CEFR level tag (e.g. "B1" or "B2").
+    
+    Return a JSON array of question objects.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -76,29 +85,58 @@ export const evaluateSpeakingSession = async (
 
   const ai = new GoogleGenAI({ apiKey });
   
-  // Xây dựng prompt
-  let promptText = `
-    Đóng vai giám khảo chấm thi Speaking. 
-    Câu hỏi là: "${question}". 
-    Hãy nghe audio câu trả lời của thí sinh.
-  `;
+  // Xây dựng prompt — STRICT Rubric-based Scoring
+  let promptText = `You are a STRICT and PROFESSIONAL English speaking examiner.
+Your task is to evaluate the student's spoken answer from the audio provided.
+
+THE QUESTION WAS: "${question}"
+`;
   
   if (sampleAnswer) {
-    promptText += ` So sánh ý nghĩa với câu trả lời mẫu này (không cần giống hệt từ ngữ, chỉ cần đúng ý): "${sampleAnswer}".`;
+    promptText += `\nMODEL ANSWER (for reference): "${sampleAnswer}"\n`;
   }
 
   promptText += `
-    Yêu cầu trả về JSON object gồm:
-    - transcription: Nội dung bạn nghe được (Text).
-    - score: Điểm số (0-100).
-    - pronunciation: Nhận xét chi tiết về phát âm (nêu lỗi sai cụ thể nếu có).
-    - grammar: Nhận xét ngữ pháp và từ vựng.
-    - betterVersion: Đề xuất một cách nói tự nhiên và hay hơn (Native speaker style).
-  `;
+CRITICAL SCORING RULES (YOU MUST FOLLOW EXACTLY):
+
+1. SILENCE/NOISE DETECTION: If the audio contains ONLY silence, background noise, breathing, 
+   or sounds that are NOT recognizable English speech, you MUST:
+   - Set score to 0
+   - Set transcription to "[Không nghe được nội dung]"
+   - Set pronunciation to "Không có nội dung để đánh giá."
+   - Set grammar to "Không có nội dung để đánh giá."
+   - Set betterVersion to ""
+
+2. IRRELEVANT ANSWER: If the student says something completely unrelated to the question, 
+   score MUST be between 0-20 maximum.
+
+3. DO NOT HALLUCINATE: Only transcribe words you ACTUALLY HEAR clearly. 
+   If you're unsure about a word, mark it as [unclear]. 
+   NEVER invent or add words the student did not say.
+
+4. SCORING RUBRIC (0-100):
+   - 0: Silence, noise, or no speech detected
+   - 1-20: Mostly unintelligible, or completely off-topic
+   - 21-40: Very poor — many pronunciation errors, limited vocabulary, broken grammar
+   - 41-60: Below average — noticeable errors but partially understandable
+   - 61-75: Good — some errors but communicates the idea adequately
+   - 76-85: Very good — minor errors, natural flow, relevant vocabulary
+   - 86-100: Excellent — near-native fluency, rich vocabulary, perfect grammar
+
+5. FEEDBACK MUST BE IN VIETNAMESE (for pronunciation, grammar fields).
+
+Return a JSON object with these exact fields:
+- transcription: Exactly what you heard (do NOT add words not spoken)
+- score: Integer 0-100 following the rubric above
+- pronunciation: Detailed pronunciation feedback (mention specific errors by word)
+- grammar: Grammar and vocabulary assessment
+- betterVersion: A natural, native-speaker version of the answer (in English)
+`;
+
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Dùng flash cho nhanh, hoặc gemini-2.5-flash-native-audio-preview
+      model: 'gemini-2.5-flash',
       contents: [
         { text: promptText },
         { inlineData: { mimeType: 'audio/webm', data: audioBase64 } }

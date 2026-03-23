@@ -517,6 +517,56 @@ function createWindow() {
     }
   });
 
+  // ===== SPEAKING IMAGE STORAGE =====
+  const SPEAKING_IMAGES_DIR = path.join(LIBRARY_ROOT, 'speaking_images');
+  if (!fs.existsSync(SPEAKING_IMAGES_DIR)) {
+    fs.mkdirSync(SPEAKING_IMAGES_DIR, { recursive: true });
+  }
+
+  // Save a speaking question image to disk, return relative path
+  ipcMain.handle('save-speaking-image', async (_event, base64Data: string, originalName: string) => {
+    try {
+      // Strip data URL prefix (e.g. "data:image/png;base64,")
+      const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!matches) return { success: false, error: 'Invalid image data' };
+      
+      const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+      const buffer = Buffer.from(matches[2], 'base64');
+      const safeName = `spk_${Date.now()}_${originalName.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 40)}.${ext}`;
+      const filePath = path.join(SPEAKING_IMAGES_DIR, safeName);
+      
+      fs.writeFileSync(filePath, buffer);
+      console.log(`[Electron] Speaking image saved: ${filePath}`);
+      
+      // Return relative path from LIBRARY_ROOT
+      return { success: true, relativePath: `speaking_images/${safeName}` };
+    } catch (err: any) {
+      console.error('[Electron] Error saving speaking image:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Read a speaking image from disk, return as base64 data URL
+  ipcMain.handle('read-speaking-image', async (_event, relativePath: string) => {
+    try {
+      const absPath = path.join(LIBRARY_ROOT, relativePath);
+      if (!absPath.startsWith(LIBRARY_ROOT)) {
+        return { success: false, error: 'Access denied' };
+      }
+      if (!fs.existsSync(absPath)) {
+        return { success: false, error: 'File not found' };
+      }
+      const buffer = fs.readFileSync(absPath);
+      const ext = path.extname(absPath).slice(1).toLowerCase();
+      const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+      const base64 = `data:${mime};base64,${buffer.toString('base64')}`;
+      return { success: true, data: base64 };
+    } catch (err: any) {
+      console.error('[Electron] Error reading speaking image:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
   // ===== LIBRARY FILE EXPLORER IPC =====
 
   // Get the library root path

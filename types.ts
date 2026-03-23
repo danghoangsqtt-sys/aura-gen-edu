@@ -97,6 +97,7 @@ export interface SpeakingQuestion {
   sampleAnswer?: string; // Cho chế độ cơ bản & AI suggestion
   topic?: string;       // Cho chế độ nâng cao
   difficulty?: string;
+  imageUrl?: string;    // Hình minh họa cho câu hỏi mô tả tranh
 }
 
 export interface SpeakingFeedback {

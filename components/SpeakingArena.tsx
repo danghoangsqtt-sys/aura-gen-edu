@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import SpeakingExamCreator from './SpeakingExamCreator';
 import SpeakingBasicMode from './SpeakingBasicMode';
 import SpeakingTopicMode from './SpeakingTopicMode';
 import { OllamaService } from '../services/ollamaService';
 import { STTService } from '../services/sttService';
+import { AIConfigService } from '../services/aiConfigService';
+import { GoogleGenAI } from '@google/genai';
 
 const auraExaminerInstruction = `You are an adaptive and professional English examiner. Your goal is to conduct a speaking test that adjusts to the user's proficiency level (A1 to C2). 
 Conduct the test in parts:
@@ -25,18 +27,42 @@ const SpeakingArena: React.FC<SpeakingArenaProps> = ({ onExit }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [messages, setMessages] = useState<{role: 'user' | 'model', text: string}[]>([]);
 
-  // Cleanup on unmount - no longer needed as GeminiLive is removed
+  // ===== TTS MODULE =====
+  const speakText = useCallback((text: string) => {
+    // Cancel any ongoing TTS to prevent overlapping
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    // Try to pick a high-quality English voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      v.lang.startsWith('en') && (v.name.includes('Female') || v.name.includes('Zira') || v.name.includes('Samantha') || v.name.includes('Google'))
+    ) || voices.find(v => v.lang.startsWith('en'));
+    if (preferred) utterance.voice = preferred;
+
+    // Fire-and-forget: UI text is already rendered, TTS plays async
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  // Cleanup TTS on unmount
   useEffect(() => {
-    return () => { /* No specific cleanup needed for Ollama chat */ };
+    return () => { window.speechSynthesis.cancel(); };
   }, []);
 
   const handleStartAuraExam = async () => {
     setMode('aura-exam');
     const intro = "Hello! I am Aura, your examiner. Let's start the speaking test Part 1. Can you tell me something about yourself?";
     setMessages([{ role: 'model', text: intro }]);
+    // TTS reads intro (async, non-blocking)
+    speakText(intro);
   };
 
   const handleStopAuraExam = () => {
+    window.speechSynthesis.cancel(); // Stop any ongoing TTS
     setMode('lobby');
     setMessages([]);
     if (onExit) onExit();
@@ -47,13 +73,36 @@ const SpeakingArena: React.FC<SpeakingArenaProps> = ({ onExit }) => {
     setMessages(newHistory as any);
     
     try {
-      const chatHistory = newHistory.map(m => ({
-        role: m.role === 'model' ? 'assistant' : 'user',
-        content: m.text
-      })) as any;
-      
-      const response = await OllamaService.sendChatMessage(chatHistory, `Continue as the examiner. Help the student improve. (Prompt instruction: ${auraExaminerInstruction})`);
+      const provider = AIConfigService.getProvider();
+      let response: string;
+
+      if (provider === 'gemini') {
+        // Gemini route — direct GoogleGenAI SDK
+        const apiKey = AIConfigService.getGeminiApiKey();
+        if (!apiKey) throw new Error('Chưa cấu hình Gemini API Key.');
+        const ai = new GoogleGenAI({ apiKey });
+        const contents = newHistory.map(m => ({
+          role: m.role as 'user' | 'model',
+          parts: [{ text: m.text }]
+        }));
+        contents.push({ role: 'user', parts: [{ text: `(System: ${auraExaminerInstruction})` }] });
+        const res = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: contents,
+        });
+        response = res.text || '';
+      } else {
+        // Ollama route
+        const chatHistory = newHistory.map(m => ({
+          role: m.role === 'model' ? 'assistant' : 'user',
+          content: m.text
+        })) as any;
+        response = await OllamaService.sendChatMessage(chatHistory, `Continue as the examiner. Help the student improve. (Prompt instruction: ${auraExaminerInstruction})`);
+      }
+
+      // Update UI first (non-blocking), then TTS reads async
       setMessages([...newHistory, { role: 'model', text: response }] as any);
+      speakText(response);
     } catch (err) {
       console.error("Exam Chat Error:", err);
     }

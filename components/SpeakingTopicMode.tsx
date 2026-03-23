@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { SpeakingQuestion, SpeakingFeedback, VocabularyItem } from '../types';
+import { SpeakingQuestion, SpeakingFeedback } from '../types';
 import { OllamaService } from '../services/ollamaService';
-import { vocabStorage } from '../services/localDataService';
+import { AIConfigService } from '../services/aiConfigService';
+import { evaluateSpeakingSession, generateSpeakingQuestions as geminiGenerateSpeaking } from '../services/speakingService';
+import { SpeakingImageService } from '../services/speakingImageService';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
 import { defaultTopicBank } from '../data/speakingTopicData';
 
@@ -12,15 +14,29 @@ interface Props {
 
 type ViewMode = 'menu' | 'generator' | 'library' | 'practice';
 
+const GENERATOR_TOPICS = [
+  'Technology & Innovation', 'Environment & Nature', 'Education & Learning',
+  'Health & Wellbeing', 'Work & Career', 'Travel & Tourism',
+  'Culture & Traditions', 'Society & Lifestyle', 'Entertainment & Media',
+  'Science & Discovery', 'Family & Relationships', 'Food & Cooking',
+  'Sports & Fitness', 'Art & Design', 'Economy & Business',
+];
+
+const CEFR_LEVELS = [
+  { value: 'A1-A2', label: 'Beginner (A1-A2)' },
+  { value: 'B1-B2', label: 'Intermediate (B1-B2)' },
+  { value: 'C1-C2', label: 'Advanced (C1-C2)' },
+];
+
 const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
   const [view, setView] = useState<ViewMode>('menu');
   
   // Data
-  const [vocabList, setVocabList] = useState<VocabularyItem[]>([]);
   const [topicBank, setTopicBank] = useState<SpeakingQuestion[]>([]);
   
   // Generator State
   const [selectedTopic, setSelectedTopic] = useState<string>('');
+  const [selectedLevel, setSelectedLevel] = useState<string>('B1-B2');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedQs, setGeneratedQs] = useState<SpeakingQuestion[]>([]);
 
@@ -37,14 +53,44 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [feedback, setFeedback] = useState<SpeakingFeedback | null>(null);
   
+  // Manual Add Form
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newQ, setNewQ] = useState({ question: '', sampleAnswer: '', topic: '', imageUrl: '' });
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Image URL cache: maps relative paths to resolved base64 data URLs
+  const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
+
+  // Resolve image URLs whenever topicBank or practiceQs change
+  useEffect(() => {
+    const resolveAll = async () => {
+      const allQs = [...topicBank, ...practiceQs];
+      const toResolve = allQs.filter(q => q.imageUrl && SpeakingImageService.isFilePath(q.imageUrl) && !resolvedImages[q.imageUrl]);
+      if (toResolve.length === 0) return;
+      const newResolved = { ...resolvedImages };
+      for (const q of toResolve) {
+        if (q.imageUrl) {
+          newResolved[q.imageUrl] = await SpeakingImageService.resolveImageUrl(q.imageUrl);
+        }
+      }
+      setResolvedImages(newResolved);
+    };
+    resolveAll();
+  }, [topicBank, practiceQs]);
+
+  // Helper: get renderable image URL (resolved or raw)
+  const getImageSrc = (imageUrl?: string) => {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('data:')) return imageUrl;
+    return resolvedImages[imageUrl] || '';
+  };
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number>(0);
 
   useEffect(() => {
     const initData = async () => {
-      const vocabs = await vocabStorage.getAll();
-      setVocabList(vocabs);
-      
       // Load Topic Bank (with default seed)
       let savedBank = await storage.get<SpeakingQuestion[]>(STORAGE_KEYS.SPEAKING_TOPIC_BANK, []);
       
@@ -61,7 +107,6 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
     initData();
   }, []);
 
-  const vocabTopics = Array.from(new Set(vocabList.map(v => v.topic || 'Chung')));
   const bankTopics = Array.from(new Set(topicBank.map(q => q.topic || 'Chung').filter(Boolean)));
 
   // Persist helper
@@ -70,28 +115,42 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
     await storage.set(STORAGE_KEYS.SPEAKING_TOPIC_BANK, updated);
   };
 
-  // --- GENERATOR ACTIONS ---
+  // --- GENERATOR ACTIONS (AI Router + Auto-save) ---
   const handleGenerate = async () => {
     if (!selectedTopic) return;
     setIsGenerating(true);
     setGeneratedQs([]);
     try {
-      const topicVocab = vocabList.filter(v => v.topic === selectedTopic);
-      const qs = await OllamaService.generateSpeakingQuestions(selectedTopic, topicVocab);
-      setGeneratedQs(qs);
+      const provider = AIConfigService.getProvider();
+      let qs: SpeakingQuestion[];
+
+      if (provider === 'gemini') {
+        qs = await geminiGenerateSpeaking(selectedTopic, selectedLevel);
+      } else {
+        const raw = await OllamaService.generateSpeakingQuestions(selectedTopic, selectedLevel);
+        qs = raw.map((q: any, idx: number) => ({
+          id: `ai-speak-${Date.now()}-${idx}`,
+          question: q.question || '',
+          sampleAnswer: q.sampleAnswer || q.answer || '',
+          topic: selectedTopic,
+          difficulty: q.difficulty || selectedLevel,
+        }));
+      }
+
+      // Auto-save to bank
+      const validQs = qs.filter(q => q.question?.trim());
+      if (validQs.length > 0) {
+        await saveTopicBank([...topicBank, ...validQs]);
+        setGeneratedQs(validQs);
+      } else {
+        alert('AI không trả về câu hỏi hợp lệ. Thử lại.');
+      }
     } catch (e) {
-      alert("Lỗi kết nối AI.");
+      console.error('Generate Speaking Error:', e);
+      alert('Lỗi kết nối AI. Kiểm tra cấu hình trong Settings.');
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const handleSaveToBank = async () => {
-    const newBank = [...topicBank, ...generatedQs];
-    await saveTopicBank(newBank);
-    alert(`Đã lưu ${generatedQs.length} câu hỏi vào kho lưu trữ!`);
-    setGeneratedQs([]);
-    setView('library');
   };
 
   // --- LIBRARY ACTIONS ---
@@ -99,6 +158,42 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
     if (!window.confirm("Bạn có chắc muốn xóa câu hỏi này?")) return;
     const newBank = topicBank.filter(q => q.id !== id);
     await saveTopicBank(newBank);
+  };
+
+  // --- ADD MANUAL QUESTION (with image support) ---
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Chỉ chấp nhận file hình ảnh.'); return; }
+    if (file.size > 5 * 1024 * 1024) { alert('Hình ảnh quá lớn (tối đa 5MB).'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setNewQ(prev => ({ ...prev, imageUrl: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddManualQ = async () => {
+    if (!newQ.question.trim()) { alert('Vui lòng nhập câu hỏi.'); return; }
+    
+    // Save image to file system if present
+    let savedImageUrl: string | undefined;
+    if (newQ.imageUrl) {
+      savedImageUrl = await SpeakingImageService.saveImage(newQ.imageUrl, `question_${Date.now()}`);
+    }
+    
+    const q: SpeakingQuestion = {
+      id: `manual-topic-${Date.now()}`,
+      question: newQ.question.trim(),
+      sampleAnswer: newQ.sampleAnswer.trim() || undefined,
+      topic: newQ.topic.trim() || 'Picture Description',
+      difficulty: 'Manual',
+      imageUrl: savedImageUrl,
+    };
+    await saveTopicBank([...topicBank, q]);
+    setNewQ({ question: '', sampleAnswer: '', topic: '', imageUrl: '' });
+    setShowAddForm(false);
+    if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
   const startPractice = (questions: SpeakingQuestion[]) => {
@@ -210,6 +305,12 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
       };
 
       mediaRecorder.onstop = async () => {
+        const duration = Date.now() - recordingStartRef.current;
+        if (duration < 1500) {
+          alert('⏱️ Bạn cần nói ít nhất 2 giây. Hãy thử lại.');
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
         setIsProcessing(true);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const reader = new FileReader();
@@ -218,11 +319,21 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
           const base64Audio = (reader.result as string).split(',')[1];
           try {
             const currentQ = practiceQs[currentQIndex];
-            const transcription = await OllamaService.speechToText(base64Audio);
-            const result = await OllamaService.evaluateSpeaking(currentQ.question, transcription);
+            const provider = AIConfigService.getProvider();
+
+            let result: SpeakingFeedback;
+            if (provider === 'gemini') {
+              // Gemini: gửi audio trực tiếp, bypass STT
+              result = await evaluateSpeakingSession(currentQ.question, base64Audio, currentQ.sampleAnswer);
+            } else {
+              // Ollama: STT trước → evaluate bằng text
+              const transcription = await OllamaService.speechToText(base64Audio);
+              result = await OllamaService.evaluateSpeaking(currentQ.question, transcription);
+            }
             setFeedback(result);
           } catch (err: any) {
-            alert("Lỗi phân tích giọng nói.");
+            console.error('[SpeakingTopic] Evaluation error:', err);
+            alert('⚠️ Lỗi phân tích AI. Vui lòng nói to và rõ ràng hơn, sau đó thử lại.');
           } finally {
             setIsProcessing(false);
           }
@@ -231,6 +342,7 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
       };
 
       mediaRecorder.start();
+      recordingStartRef.current = Date.now();
       setIsRecording(true);
       setFeedback(null);
     } catch (err) {
@@ -281,7 +393,7 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
             <button onClick={() => setView('generator')} className="group bg-emerald-50 border-2 border-emerald-100 hover:border-emerald-500 hover:bg-emerald-100 p-6 rounded-2xl text-left transition-all shadow-lg active:scale-95">
                <div className="w-12 h-12 bg-emerald-500 text-white rounded-xl flex items-center justify-center text-2xl mb-4 shadow-xl shadow-emerald-200 group-hover:scale-110 transition-transform">⚡</div>
                <h3 className="text-xl font-black text-emerald-900 uppercase mb-1">AI Generator</h3>
-               <p className="text-xs font-medium text-emerald-700">Tạo bộ câu hỏi mới từ chủ đề & từ vựng có sẵn.</p>
+               <p className="text-xs font-medium text-emerald-700">Tạo câu hỏi mới từ chủ đề & trình độ CEFR.</p>
             </button>
             <button onClick={() => setView('library')} className="group bg-indigo-50 border-2 border-indigo-100 hover:border-indigo-500 hover:bg-indigo-100 p-6 rounded-2xl text-left transition-all shadow-lg active:scale-95 relative">
                <div className="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-2xl mb-4 shadow-xl shadow-indigo-200 group-hover:scale-110 transition-transform">📂</div>
@@ -303,41 +415,62 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
       <div className="h-full flex flex-col bg-white">
         <div className="bg-slate-50 border-b px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-             <button onClick={() => setView('menu')} className="p-2 bg-white border rounded-xl hover:bg-slate-100" title="Quay lại"><svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg></button>
+             <button onClick={() => { setView('menu'); setGeneratedQs([]); }} className="p-2 bg-white border rounded-xl hover:bg-slate-100" title="Quay lại"><svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg></button>
              <h2 className="text-lg font-black text-slate-800 uppercase">Tạo câu hỏi AI</h2>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50/30">
            <div className="max-w-2xl mx-auto space-y-6">
-              <div className="bg-white p-6 rounded-[32px] shadow-lg border border-slate-100">
-                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Chọn chủ đề từ vựng</label>
-                 <select 
-                    className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold outline-none focus:border-emerald-500 transition-all mb-4"
-                    value={selectedTopic}
-                    onChange={e => setSelectedTopic(e.target.value)}
-                 >
-                    <option value="">-- Chọn chủ đề --</option>
-                    {vocabTopics.map(t => <option key={t} value={t}>{t}</option>)}
-                 </select>
+              <div className="bg-white p-6 rounded-[32px] shadow-lg border border-slate-100 space-y-4">
+                 {/* Topic dropdown */}
+                 <div>
+                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Chọn chủ đề</label>
+                   <select 
+                      className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold outline-none focus:border-emerald-500 transition-all"
+                      value={selectedTopic}
+                      onChange={e => setSelectedTopic(e.target.value)}
+                   >
+                      <option value="">-- Chọn chủ đề --</option>
+                      {GENERATOR_TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+                   </select>
+                 </div>
+
+                 {/* Level dropdown */}
+                 <div>
+                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Trình độ CEFR</label>
+                   <select 
+                      className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all"
+                      value={selectedLevel}
+                      onChange={e => setSelectedLevel(e.target.value)}
+                      title="Chọn trình độ CEFR"
+                   >
+                      {CEFR_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                   </select>
+                 </div>
+
                  <button 
                     disabled={!selectedTopic || isGenerating}
                     onClick={handleGenerate}
                     className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50"
                  >
-                    {isGenerating ? 'AI Đang suy nghĩ...' : 'Tạo câu hỏi'}
+                    {isGenerating ? 'AI Đang suy nghĩ...' : '⚡ Tạo & Lưu tự động'}
                  </button>
               </div>
 
               {generatedQs.length > 0 && (
                 <div className="space-y-4 animate-in slide-in-from-bottom-4">
                   <div className="flex items-center justify-between">
-                     <h3 className="text-sm font-black text-slate-700 uppercase">Kết quả ({generatedQs.length})</h3>
-                     <button onClick={handleSaveToBank} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-md">Lưu vào kho</button>
+                     <h3 className="text-sm font-black text-emerald-700 uppercase">✅ Đã tạo & lưu {generatedQs.length} câu hỏi</h3>
+                     <button onClick={() => setView('library')} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-md">Xem kho →</button>
                   </div>
                   {generatedQs.map((q, i) => (
-                    <div key={i} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <div key={i} className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm">
                        <p className="font-bold text-slate-800">{q.question}</p>
                        <p className="text-xs text-slate-500 mt-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100">Gợi ý: {q.sampleAnswer}</p>
+                       <div className="flex items-center gap-2 mt-2">
+                         <span className="text-[9px] font-bold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded">{q.difficulty}</span>
+                         <span className="text-[9px] font-bold bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded">{q.topic}</span>
+                       </div>
                     </div>
                   ))}
                 </div>
@@ -369,12 +502,66 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
           <div className="max-w-4xl mx-auto space-y-5">
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => setShowAddForm(!showAddForm)} className="px-3 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-sm">🖼️ Thêm câu hỏi</button>
               <button onClick={() => setShowBatchImport(!showBatchImport)} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-all flex items-center gap-1.5">📋 Dán hàng loạt</button>
               <button onClick={() => fileInputRef.current?.click()} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-600 hover:border-emerald-300 hover:text-emerald-600 transition-all flex items-center gap-1.5">📥 Import JSON</button>
               <button onClick={handleExportJSON} disabled={topicBank.length === 0} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-all flex items-center gap-1.5 disabled:opacity-40">📤 Export JSON</button>
               <button onClick={handleRestoreDefaults} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-600 hover:border-amber-300 hover:text-amber-600 transition-all flex items-center gap-1.5">🔄 Mặc định</button>
               <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} title="Chọn file JSON để import" />
+              <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} title="Chọn hình ảnh" />
             </div>
+
+            {/* Add Manual Question Form */}
+            {showAddForm && (
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-200 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">🖼️ Thêm câu hỏi mới (có thể kèm hình)</h3>
+                  <button onClick={() => { setShowAddForm(false); setNewQ({ question: '', sampleAnswer: '', topic: '', imageUrl: '' }); }} className="text-slate-400 hover:text-rose-500" title="Đóng">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <input
+                  className="w-full p-3 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:border-emerald-500"
+                  placeholder="Câu hỏi (VD: Describe the picture below...)"
+                  value={newQ.question}
+                  onChange={e => setNewQ(p => ({ ...p, question: e.target.value }))}
+                />
+                <input
+                  className="w-full p-3 bg-slate-50 border rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
+                  placeholder="Gợi ý trả lời (không bắt buộc)"
+                  value={newQ.sampleAnswer}
+                  onChange={e => setNewQ(p => ({ ...p, sampleAnswer: e.target.value }))}
+                />
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 p-3 bg-slate-50 border rounded-xl text-xs font-medium outline-none focus:border-emerald-500"
+                    placeholder="Chủ đề (VD: Picture Description)"
+                    value={newQ.topic}
+                    onChange={e => setNewQ(p => ({ ...p, topic: e.target.value }))}
+                  />
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    className="px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-xl text-[10px] font-black text-indigo-600 hover:bg-indigo-100 transition-all flex items-center gap-1.5"
+                  >
+                    📷 {newQ.imageUrl ? 'Đổi ảnh' : 'Thêm ảnh'}
+                  </button>
+                </div>
+                {newQ.imageUrl && (
+                  <div className="relative inline-block">
+                    <img src={newQ.imageUrl} alt="Preview" className="w-40 h-28 object-cover rounded-xl border border-emerald-200 shadow-sm" />
+                    <button
+                      onClick={() => { setNewQ(p => ({ ...p, imageUrl: '' })); if (imageInputRef.current) imageInputRef.current.value = ''; }}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow hover:bg-rose-600"
+                      title="Xóa ảnh"
+                    >✕</button>
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => { setShowAddForm(false); setNewQ({ question: '', sampleAnswer: '', topic: '', imageUrl: '' }); }} className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase">Hủy</button>
+                  <button onClick={handleAddManualQ} className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-emerald-700 transition-all">✅ Lưu câu hỏi</button>
+                </div>
+              </div>
+            )}
 
             {/* Batch Import Panel */}
             {showBatchImport && (
@@ -449,9 +636,15 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
                       <div key={q.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex gap-4 group hover:border-indigo-200 transition-all">
                         <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0">{idx + 1}</div>
                         <div className="flex-1 min-w-0">
+                          {q.imageUrl && getImageSrc(q.imageUrl) && (
+                            <img src={getImageSrc(q.imageUrl)} alt="Question" className="w-full max-w-xs h-32 object-cover rounded-xl border border-slate-200 mb-2" />
+                          )}
                           <p className="font-bold text-slate-800 text-sm">{q.question}</p>
                           {q.sampleAnswer && <p className="text-xs text-slate-500 mt-1 line-clamp-1 italic">Sample: {q.sampleAnswer}</p>}
-                          {q.difficulty && <span className="inline-block mt-1 text-[9px] font-bold bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded">{q.difficulty}</span>}
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {q.difficulty && <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-1.5 py-0.5 rounded">{q.difficulty}</span>}
+                            {q.imageUrl && <span className="text-[9px] font-bold bg-violet-50 text-violet-500 px-1.5 py-0.5 rounded">🖼️ Có hình</span>}
+                          </div>
                         </div>
                         <div className="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => startPractice([q])} className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100" title="Luyện tập câu này"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg></button>
@@ -483,6 +676,11 @@ const SpeakingTopicMode: React.FC<Props> = ({ onBack }) => {
             <div className="w-full max-w-2xl space-y-8 animate-in zoom-in duration-300">
                <div className="text-center space-y-4">
                   <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest">{currentQ.topic || 'Chủ đề'}</span>
+                  {currentQ.imageUrl && (
+                    <div className="flex justify-center">
+                      <img src={getImageSrc(currentQ.imageUrl)} alt="Question" className="max-w-md max-h-72 object-contain rounded-2xl border-2 border-slate-200 shadow-lg" />
+                    </div>
+                  )}
                   <h3 className="text-3xl md:text-4xl font-black text-slate-800 leading-tight">{currentQ.question}</h3>
                   {currentQ.sampleAnswer && (
                     <div className="mt-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 inline-block max-w-lg">
