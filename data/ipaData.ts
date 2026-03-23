@@ -1,3 +1,13 @@
+export interface PracticeWord {
+  word: string;
+  ipa: string;
+}
+
+export interface PracticeSentence {
+  sentence: string;
+  ipa: string;
+}
+
 export interface IPASound {
   symbol: string;
   type: 'monophthong' | 'diphthong' | 'consonant';
@@ -5,8 +15,10 @@ export interface IPASound {
   examples: string[];
   youtubeQuery: string;
   description: string;
-  pairTarget?: string; // The confusing pair, e.g., if this is /ɪ/, pair is /iː/
-  minimalPairs?: { word1: string; word2: string }[]; // e.g., [{word1: "ship", word2: "sheep"}]
+  pairTarget?: string;
+  minimalPairs?: { word1: string; word2: string }[];
+  practiceWords?: PracticeWord[];
+  practiceSentences?: PracticeSentence[];
 }
 
 export const ipaSounds: IPASound[] = [

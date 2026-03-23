@@ -393,37 +393,165 @@ Trường "vocabulary" BẮT BUỘC liệt kê TẤT CẢ các từ với đầy
 };
 
 /**
- * Phòng Luyện Viết (Writing Master) - Chấm điểm và sửa bài chuẩn Aptis ESOL
+ * Phòng Luyện Viết (Writing Master) - JSON structured evaluation
  */
-export const evaluateWriting = async (textInput: string): Promise<string> => {
+export interface WritingEvaluation {
+  cefrLevel: string;       // A1, A2, B1, B2, C1, C2
+  bandScore: number;       // 0-100
+  overallFeedback: string; // Nhận xét chung
+  grammarErrors: { error: string; fix: string; explanation: string }[];
+  vocabUpgrades: { original: string; upgraded: string; example: string }[];
+  structureFeedback: string;
+  modelEssay: string;      // Bài viết mẫu cấp độ cao hơn
+  advancedVocab: { word: string; meaning: string; pos: string; example: string }[];
+  advancedSentences: { pattern: string; example: string }[];
+}
+
+const WRITING_EVAL_PROMPT = (text: string) => `You are an expert IELTS/CEFR Writing Examiner. Evaluate this English text and return a STRICT JSON object.
+
+USER TEXT:
+"""
+${text}
+"""
+
+Return EXACTLY this JSON schema (no markdown, no explanation):
+{
+  "cefrLevel": "<A1|A2|B1|B2|C1|C2>",
+  "bandScore": <0-100>,
+  "overallFeedback": "<2-3 sentence overall assessment in Vietnamese>",
+  "grammarErrors": [
+    {"error": "<exact wrong text>", "fix": "<corrected text>", "explanation": "<brief explanation in Vietnamese>"}
+  ],
+  "vocabUpgrades": [
+    {"original": "<basic word used>", "upgraded": "<advanced alternative>", "example": "<sentence using the upgraded word>"}
+  ],
+  "structureFeedback": "<feedback on essay structure, coherence, paragraphing in Vietnamese>",
+  "modelEssay": "<rewrite the user's text at ONE CEFR LEVEL HIGHER. Use more sophisticated vocabulary, better transitions, and more complex sentence structures. Keep the same topic and ideas.>",
+  "advancedVocab": [
+    {"word": "<advanced word>", "meaning": "<Vietnamese meaning>", "pos": "<noun/verb/adj/adv>", "example": "<English sentence>"}
+  ],
+  "advancedSentences": [
+    {"pattern": "<sentence pattern name>", "example": "<example using the pattern>"}
+  ]
+}
+
+RULES:
+- grammarErrors: List ALL grammar/spelling mistakes found (max 10)
+- vocabUpgrades: Suggest 5-8 vocabulary upgrades from basic to advanced
+- modelEssay: Must be the SAME topic but written at one level higher (e.g., if user is B1, write at B2)
+- advancedVocab: List 8-12 useful advanced words related to the topic
+- advancedSentences: List 5-8 advanced sentence patterns the user can use
+- All explanations and meanings in Vietnamese
+- Return ONLY raw JSON`;
+
+export const evaluateWritingStructured = async (textInput: string): Promise<WritingEvaluation> => {
   const apiKey = await getApiKey();
-  if (!apiKey) throw new Error("Chưa cấu hình API Key trong phần Cài đặt.");
 
-  const ai = new GoogleGenAI({ apiKey });
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: WRITING_EVAL_PROMPT(textInput),
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2
+        }
+      });
+      return JSON.parse(cleanJsonResponse(response.text || '')) as WritingEvaluation;
+    } catch (err: any) {
+      console.error('[Gemini Writing Eval] Error:', err);
+      // Fallthrough to Ollama
+    }
+  }
 
-  const prompt = `Act as an expert English Writing Examiner. Evaluate the user's text based on CEFR levels (A1-C2).
-  Must output ONLY in strictly formatted Markdown.
-  Structure required:
-  ### 📊 Ước lượng điểm (Band Score): [Your Score]
-  ### 🚨 Phân tích lỗi Ngữ pháp & Chính tả:
-  - **[Lỗi sai]** -> **[Cách sửa]**: [Giải thích ngắn gọn]
-  ### 💎 Gợi ý Nâng cấp Từ vựng (Vocabulary):
-  - Thay vì dùng **[Từ cũ]**, hãy dùng **[Từ vựng nâng cao hơn]**: [Câu ví dụ]
-  ### 💡 Nhận xét chung & Cấu trúc bài:
-  [Feedback của bạn]
-
-  User text: "${textInput}"`;
-
+  // Ollama fallback
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: { temperature: 0.2 } // Low temperature for consistent grading
-    });
-    return response.text || '';
-  } catch (error: any) {
-    console.error("Writing Evaluation Error:", error);
-    throw new Error(error?.message || "Hệ thống AI gặp sự cố khi chấm bài.");
+    const { OllamaService } = await import('./ollamaService');
+    const history = [{ role: 'system' as const, content: 'You are an English writing examiner. Return ONLY valid JSON.' }];
+    const result = await OllamaService.sendChatMessage(history, WRITING_EVAL_PROMPT(textInput));
+    const cleaned = result.replace(/```json/g, '').replace(/```/g, '').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]) as WritingEvaluation;
+    throw new Error('Invalid Ollama response');
+  } catch (err: any) {
+    console.error('[Ollama Writing Eval] Error:', err);
+    throw new Error('Không thể chấm bài. Kiểm tra kết nối AI.');
+  }
+};
+
+/**
+ * AI sinh 10 đề luyện viết hàng tuần — đa dạng thể loại và CEFR level
+ */
+import { WritingTopic } from '../types';
+
+const WRITING_TOPICS_PROMPT = `You are an expert IELTS/CEFR writing topic designer. Generate EXACTLY 10 diverse English writing practice topics for a weekly practice session.
+
+REQUIREMENTS:
+- Mix task types: 2 essays, 2 letters, 2 emails, 2 reports, 2 reviews
+- Mix CEFR levels: 2×A2, 2×B1, 3×B2, 2×C1, 1×C2
+- Topics should be practical, modern, and interesting (technology, environment, education, work, travel, health, culture, social issues)
+- Each topic must have 3 useful tips in Vietnamese
+- Word count hints should match the CEFR level
+
+Return ONLY a JSON array with EXACTLY this schema:
+[
+  {
+    "id": "topic_1",
+    "prompt": "<the full writing prompt in English, 2-3 sentences>",
+    "taskType": "<essay|letter|email|report|review>",
+    "cefrTarget": "<A2|B1|B2|C1|C2>",
+    "wordCountHint": "<e.g. 80-120 words>",
+    "tips": ["<tip in Vietnamese>", "<tip in Vietnamese>", "<tip in Vietnamese>"]
+  }
+]
+
+RULES:
+- id must be "topic_1" through "topic_10"
+- Prompts must be clear and specific, giving students a clear direction
+- Tips should be practical writing advice in Vietnamese
+- Word count hints: A2=80-120, B1=120-180, B2=180-250, C1=250-350, C2=300-400
+- NO duplicate topics or themes
+- Return ONLY raw JSON array`;
+
+export const generateWritingTopics = async (): Promise<WritingTopic[]> => {
+  const apiKey = await getApiKey();
+
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: WRITING_TOPICS_PROMPT,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.9
+        }
+      });
+      const topics = JSON.parse(cleanJsonResponse(response.text || '')) as WritingTopic[];
+      if (Array.isArray(topics) && topics.length >= 5) return topics;
+      throw new Error('Invalid topic count');
+    } catch (err: any) {
+      console.error('[Gemini Writing Topics] Error:', err);
+      // Fallthrough to Ollama
+    }
+  }
+
+  // Ollama fallback
+  try {
+    const { OllamaService } = await import('./ollamaService');
+    const history = [{ role: 'system' as const, content: 'You are a writing topic generator. Return ONLY valid JSON array.' }];
+    const result = await OllamaService.sendChatMessage(history, WRITING_TOPICS_PROMPT);
+    const cleaned = result.replace(/```json/g, '').replace(/```/g, '').trim();
+    const match = cleaned.match(/\[[\s\S]*\]/);
+    if (match) {
+      const topics = JSON.parse(match[0]) as WritingTopic[];
+      if (Array.isArray(topics) && topics.length >= 5) return topics;
+    }
+    throw new Error('Invalid Ollama response');
+  } catch (err: any) {
+    console.error('[Ollama Writing Topics] Error:', err);
+    throw new Error('Không thể tạo đề luyện viết. Kiểm tra kết nối AI.');
   }
 };
 
@@ -525,3 +653,106 @@ export interface VocabMindMapResponse {
   }[];
 }
 
+// ═══════════════════════════════════════════════
+// Pronunciation Analysis — IPA Clinic (Record & Analyze)
+// ═══════════════════════════════════════════════
+
+export interface PronunciationFeedback {
+  score: number;
+  transcription: string;
+  errors: string[];
+  advice: string;
+}
+
+/**
+ * Phân tích phát âm từ audio blob — dùng Gemini REST API (KHÔNG WebSocket)
+ * Fallback: Ollama STT → text comparison
+ */
+export const analyzePronunciation = async (
+  audioBlob: Blob,
+  targetText: string
+): Promise<PronunciationFeedback> => {
+  const apiKey = await getApiKey();
+
+  // Convert blob to base64
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  const mimeType = audioBlob.type || 'audio/webm';
+
+  if (apiKey) {
+    // ═══ Gemini Path ═══
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are an expert English pronunciation coach. Listen to the attached audio carefully.
+The user is trying to say: "${targetText}".
+
+Evaluate their pronunciation and return a JSON object EXACTLY like this:
+{
+  "score": <number 0-100>,
+  "transcription": "<what you actually heard the user say>",
+  "errors": ["<specific error 1>", "<specific error 2>"],
+  "advice": "<one clear tip on how to improve>"
+}
+
+Scoring guide:
+- 90-100: Native-like, perfect
+- 70-89: Good, minor issues
+- 50-69: Understandable but noticeable errors
+- 30-49: Difficult to understand
+- 0-29: Very poor or unintelligible
+
+If no audio is detected or too short, give score 0.
+Return ONLY raw JSON. No markdown, no explanation.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inlineData: { data: base64, mimeType } }
+          ]
+        }],
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.1
+        }
+      });
+
+      const cleaned = cleanJsonResponse(response.text || '');
+      return JSON.parse(cleaned) as PronunciationFeedback;
+    } catch (err: any) {
+      console.error('[Gemini Pronunciation] Error:', err);
+      // Fallthrough to Ollama
+    }
+  }
+
+  // ═══ Ollama Fallback: STT → text comparison ═══
+  try {
+    const { OllamaService } = await import('./ollamaService');
+    const transcription = await OllamaService.speechToText(base64);
+
+    if (!transcription.trim()) {
+      return { score: 0, transcription: '', errors: ['Không nghe thấy giọng nói'], advice: 'Hãy nói to và rõ hơn.' };
+    }
+
+    // Use Ollama to compare
+    const comparePrompt = `Compare these two texts and score pronunciation accuracy as JSON:
+Target: "${targetText}"
+Heard: "${transcription}"
+Return: {"score": <0-100>, "transcription": "${transcription}", "errors": ["..."], "advice": "..."}
+Raw JSON only.`;
+
+    const history = [{ role: 'system' as const, content: 'You are a pronunciation evaluator. Return only JSON.' }];
+    const result = await OllamaService.sendChatMessage(history, comparePrompt);
+    const cleaned = result.replace(/```json/g, '').replace(/```/g, '').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]) as PronunciationFeedback;
+
+    // Simple fallback
+    const similarity = targetText.toLowerCase().trim() === transcription.toLowerCase().trim() ? 90 : 40;
+    return { score: similarity, transcription, errors: similarity < 90 ? ['Phát âm chưa khớp'] : [], advice: 'Nghe mẫu và thử lại.' };
+  } catch (err: any) {
+    console.error('[Ollama Pronunciation Fallback] Error:', err);
+    throw new Error('Không thể phân tích phát âm. Kiểm tra kết nối AI.');
+  }
+};

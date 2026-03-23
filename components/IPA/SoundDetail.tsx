@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { IPASound } from '../../data/ipaData';
-import { useGeminiLive } from '../../hooks/useGeminiLive';
+import { ipaPracticeMap } from '../../data/ipaPracticeData';
+import { analyzePronunciation, PronunciationFeedback } from '../../services/geminiService';
+import PracticeItem from '../PracticeItem';
 import IPAQuiz from './IPAQuiz';
 
 interface SoundDetailProps {
@@ -10,6 +12,7 @@ interface SoundDetailProps {
 
 const SoundDetail: React.FC<SoundDetailProps> = ({ sound, onBack }) => {
   const [activeTab, setActiveTab] = useState<'theory' | 'practice' | 'pairs' | 'quiz'>('theory');
+  const [practiceSubTab, setPracticeSubTab] = useState<'words' | 'sentences'>('words');
 
   // For Text-to-Speech
   const handlePlayWord = (word: string) => {
@@ -21,18 +24,13 @@ const SoundDetail: React.FC<SoundDetailProps> = ({ sound, onBack }) => {
     }
   };
 
-  // For Gemini Pronunciation Check
-  const { connected, connect, disconnect } = useGeminiLive();
-  const isPracticing = connected;
+  // AI Evaluation handler for PracticeItem
+  const handleAnalyze = useCallback(async (audioBlob: Blob, targetText: string): Promise<PronunciationFeedback> => {
+    return analyzePronunciation(audioBlob, targetText);
+  }, []);
 
-  const handleTogglePractice = async () => {
-    if (isPracticing) {
-      disconnect();
-    } else {
-      const instruction = `You are an expert phonetician. Listen to the user pronounce the sound [${sound.symbol}] and the words [${sound.examples.join(', ')}]. Provide exact IPA transcription of what you heard and correct them.`;
-      await connect(instruction);
-    }
-  };
+  // Get practice data for this sound
+  const practiceData = ipaPracticeMap[sound.symbol];
 
   return (
     <div className="w-full max-w-6xl mx-auto pb-12">
@@ -146,36 +144,53 @@ const SoundDetail: React.FC<SoundDetailProps> = ({ sound, onBack }) => {
               </div>
             )}
 
-            {/* PRACTICE TAB */}
+            {/* PRACTICE TAB — Record & Analyze */}
             {activeTab === 'practice' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center justify-center h-full">
-                <div className="w-24 h-24 mb-6 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-2xl shadow-indigo-500/40">
-                  <span className="text-4xl">🎙️</span>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Sub-tabs */}
+                <div className="flex gap-1 mb-5 bg-slate-100 p-1 rounded-xl">
+                  <button
+                    onClick={() => setPracticeSubTab('words')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                      practiceSubTab === 'words'
+                        ? 'bg-white text-indigo-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    📖 Luyện Từ ({practiceData?.words.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setPracticeSubTab('sentences')}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                      practiceSubTab === 'sentences'
+                        ? 'bg-white text-indigo-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    💬 Luyện Câu ({practiceData?.sentences.length || 0})
+                  </button>
                 </div>
-                <h3 className="text-2xl font-black text-slate-800 mb-2">Trợ Giảng AI Aura</h3>
-                <p className="text-slate-500 text-center max-w-md mb-8">
-                  Aura sẽ lắng nghe bạn phát âm âm /{sound.symbol}/ và các từ ví dụ, sau đó đánh giá trực tiếp độ chính xác của khẩu hình.
+
+                <p className="text-xs text-slate-400 mb-4">
+                  🔊 Nghe mẫu → 🎙️ Thu âm → 🎧 Nghe lại → ✨ AI Đánh giá
                 </p>
-                <button 
-                  onClick={handleTogglePractice}
-                  className={`px-8 py-4 rounded-full font-black text-lg shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-3 ${
-                    isPracticing 
-                      ? 'bg-rose-500 text-white shadow-rose-500/30' 
-                      : 'bg-indigo-600 text-white shadow-indigo-600/30'
-                  }`}
-                >
-                  {isPracticing ? (
-                    <>
-                      <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
-                      Dừng Ghi Âm
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                      Bắt Đầu Luyện Tập
-                    </>
-                  )}
-                </button>
+
+                {practiceData ? (
+                  <div className="space-y-2">
+                    {practiceSubTab === 'words'
+                      ? practiceData.words.map((w, i) => (
+                          <PracticeItem key={`${sound.symbol}-w-${i}`} text={w.word} ipa={w.ipa} onAnalyze={handleAnalyze} />
+                        ))
+                      : practiceData.sentences.map((s, i) => (
+                          <PracticeItem key={`${sound.symbol}-s-${i}`} text={s.sentence} ipa={s.ipa} onAnalyze={handleAnalyze} />
+                        ))
+                    }
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                    <p className="text-sm font-medium">Chưa có dữ liệu luyện tập cho âm /{sound.symbol}/</p>
+                  </div>
+                )}
               </div>
             )}
 

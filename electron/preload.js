@@ -33,7 +33,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'rename-library-item',
       'delete-library-item',
       'open-in-os-explorer',
-      'open-file-native'
+      'open-file-native',
+      'save-writing-week',
+      'read-writing-week',
+      'list-writing-weeks'
     ];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);

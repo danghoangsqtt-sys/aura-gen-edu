@@ -240,3 +240,30 @@ export interface DocumentFolder {
   icon?: string;
   createdAt: string;
 }
+
+// --- WRITING PRACTICE TYPES ---
+export interface WritingTopic {
+  id: string;                  // "topic_1", "topic_2", ...
+  prompt: string;              // Đề bài tiếng Anh
+  taskType: string;            // "essay", "letter", "report", "email", "review"
+  cefrTarget: string;          // CEFR level target (A2-C2)
+  wordCountHint: string;       // e.g. "150-200 words"
+  tips: string[];              // Gợi ý viết bài
+}
+
+export interface WritingSubmission {
+  topicId: string;
+  userText: string;
+  evaluation: any | null;      // WritingEvaluation from geminiService
+  submittedAt: string;
+  wordCount: number;
+}
+
+export interface WritingWeekData {
+  weekId: string;              // "w4_m3_y26"
+  weekLabel: string;           // "Tuần 4, Tháng 3, 2026"
+  generatedAt: string;         // ISO timestamp
+  mondayDate: string;          // ISO date of the Monday
+  topics: WritingTopic[];      // 10 topics
+  submissions: Record<string, WritingSubmission>; // topicId → submission
+}

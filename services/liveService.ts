@@ -27,9 +27,11 @@ export class LiveService {
     this.url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
   }
 
-  connect(instruction?: string) {
+  connect(instruction?: string, greeting?: string) {
     if (instruction) this.instruction = instruction;
     this.isSetupComplete = false;
+    // Lưu lời chào từ caller — CHỈ gửi sau setupComplete
+    this.pendingGreeting = greeting || null;
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
@@ -129,8 +131,9 @@ export class LiveService {
     console.info('[LiveService] -> [Action]: Sending Setup Payload:', JSON.stringify(setupPayload));
     this.send(setupPayload);
 
-    // Đặt lời chào vào hàng đợi — sẽ tự gửi SAU KHI setupComplete
-    this.pendingGreeting = "Hãy đóng vai là Aura. Hãy nói đúng một câu ngắn gọn bằng tiếng Việt: 'Xin chào, mình là Aura, bạn muốn trao đổi gì hôm nay?' và chờ tôi trả lời.";
+    // BUG FIX: KHÔNG hardcode greeting ở đây.
+    // Lời chào (nếu có) đã được set từ connect() bởi caller.
+    // Sẽ tự động gửi trong handleMessageStr khi nhận setupComplete.
   }
 
   sendAudio(base64Pcm: string) {

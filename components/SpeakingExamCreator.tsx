@@ -5,6 +5,7 @@ import { OllamaService } from '../services/ollamaService';
 import SpeakingExamPrint from './SpeakingExamPrint';
 import { storage, STORAGE_KEYS } from '../services/storageAdapter';
 import { vocabStorage } from '../services/localDataService';
+import { defaultSpeakingPart1 } from '../data/speakingPart1Data';
 
 interface Props {
   onBack: () => void;
@@ -51,6 +52,16 @@ const SpeakingExamCreator: React.FC<Props> = ({ onBack, initialManualQuestions }
         // Saved Topic Questions
         const savedBank = await storage.get<SpeakingQuestion[]>(STORAGE_KEYS.SPEAKING_TOPIC_BANK, []);
         setSavedTopicQuestions(savedBank);
+
+        // If manual questions prop is empty, load from storage (which may have defaults)
+        if (initialManualQuestions.length === 0) {
+          const storedManual = await storage.get<SpeakingQuestion[]>(STORAGE_KEYS.SPEAKING_MANUAL, []);
+          if (storedManual && storedManual.length > 0) {
+            setManualQuestions(storedManual);
+          } else {
+            setManualQuestions(defaultSpeakingPart1);
+          }
+        }
     };
     initData();
   }, []);

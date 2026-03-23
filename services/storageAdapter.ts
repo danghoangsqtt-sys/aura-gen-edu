@@ -12,7 +12,10 @@ export const STORAGE_KEYS = {
   SPEAKING_TOPIC_BANK: 'edugen_speaking_topic_bank',
   VOCAB_CANVAS: 'edugen_vocab_canvas',
   STUDY_DOCUMENTS: 'edugen_study_documents',
-  DOCUMENT_FOLDERS: 'edugen_document_folders'
+  DOCUMENT_FOLDERS: 'edugen_document_folders',
+  WRITING_CURRENT_WEEK: 'edugen_writing_current_week',
+  SPEAKING_MANUAL_SEEDED: 'edugen_speaking_manual_seeded',
+  SPEAKING_TOPIC_BANK_SEEDED: 'edugen_speaking_topic_bank_seeded'
 };
 
 const isElectron = () => {

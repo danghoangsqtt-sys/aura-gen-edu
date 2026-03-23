@@ -104,9 +104,7 @@ const SpeakingArena: React.FC<SpeakingArenaProps> = ({ onExit }) => {
 
   // --- ROUTER ---
   if (mode === 'exam-creator') {
-    const savedManual = localStorage.getItem('auragen_speaking_manual');
-    const initialManual = savedManual ? JSON.parse(savedManual) : [];
-    return <SpeakingExamCreator onBack={() => setMode('lobby')} initialManualQuestions={initialManual} />;
+    return <SpeakingExamCreator onBack={() => setMode('lobby')} initialManualQuestions={[]} />;
   }
 
   if (mode === 'basic') {

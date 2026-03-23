@@ -631,6 +631,77 @@ function createWindow() {
     }
   });
 
+  // ===== WRITING LIBRARY IPC =====
+  const WRITING_DIR = path.join(LIBRARY_ROOT, 'Writing');
+  if (!fs.existsSync(WRITING_DIR)) {
+    fs.mkdirSync(WRITING_DIR, { recursive: true });
+  }
+
+  // Save week data to AuraGen_Library/Writing/{weekId}/week_data.json
+  ipcMain.handle('save-writing-week', async (_event, weekId: string, data: any) => {
+    try {
+      const safeWeekId = weekId.replace(/[^a-zA-Z0-9_]/g, '_');
+      const weekDir = path.join(WRITING_DIR, safeWeekId);
+      if (!fs.existsSync(weekDir)) {
+        fs.mkdirSync(weekDir, { recursive: true });
+      }
+      const filePath = path.join(weekDir, 'week_data.json');
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+      console.log('[Writing] Saved week:', filePath);
+      return { success: true, path: filePath };
+    } catch (err: any) {
+      console.error('[Writing] save-writing-week error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Read week data from AuraGen_Library/Writing/{weekId}/week_data.json
+  ipcMain.handle('read-writing-week', async (_event, weekId: string) => {
+    try {
+      const safeWeekId = weekId.replace(/[^a-zA-Z0-9_]/g, '_');
+      const filePath = path.join(WRITING_DIR, safeWeekId, 'week_data.json');
+      if (!fs.existsSync(filePath)) {
+        return { success: false, error: 'Week data not found' };
+      }
+      const content = fs.readFileSync(filePath, 'utf-8');
+      return { success: true, data: JSON.parse(content) };
+    } catch (err: any) {
+      console.error('[Writing] read-writing-week error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // List all writing weeks (folders inside AuraGen_Library/Writing/)
+  ipcMain.handle('list-writing-weeks', async () => {
+    try {
+      const entries = await fs.promises.readdir(WRITING_DIR, { withFileTypes: true });
+      const weeks: { weekId: string; weekLabel: string; topicCount: number; submissionCount: number }[] = [];
+      
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const weekDataPath = path.join(WRITING_DIR, entry.name, 'week_data.json');
+        if (!fs.existsSync(weekDataPath)) continue;
+        try {
+          const content = fs.readFileSync(weekDataPath, 'utf-8');
+          const data = JSON.parse(content);
+          weeks.push({
+            weekId: data.weekId || entry.name,
+            weekLabel: data.weekLabel || entry.name,
+            topicCount: Array.isArray(data.topics) ? data.topics.length : 0,
+            submissionCount: data.submissions ? Object.keys(data.submissions).length : 0,
+          });
+        } catch { /* skip corrupt file */ }
+      }
+
+      // Sort newest first (by weekId descending)
+      weeks.sort((a, b) => b.weekId.localeCompare(a.weekId));
+      return { success: true, weeks };
+    } catch (err: any) {
+      console.error('[Writing] list-writing-weeks error:', err);
+      return { success: false, error: err.message, weeks: [] };
+    }
+  });
+
   // Open any file with the system's default application (PowerPoint, Adobe Reader, etc.)
   ipcMain.handle('open-file-native', async (_event, absolutePath: string) => {
     try {

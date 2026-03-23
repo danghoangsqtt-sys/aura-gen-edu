@@ -28,6 +28,8 @@ export const useAuraLocalVoice = () => {
 
   const isActiveRef = useRef(false);
   const messagesRef = useRef<ChatMessage[]>([]);
+  // System Prompt tùy chỉnh — được inject vào đầu mỗi lần gọi Ollama
+  const systemPromptRef = useRef<string | null>(null);
 
   // Keep ref in sync with state for async closures
   const updateMessages = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
@@ -100,11 +102,20 @@ export const useAuraLocalVoice = () => {
     setIsThinking(true);
 
     try {
-      // Prepare history for Ollama
-      const history: OllamaChatMessage[] = messagesRef.current.map(m => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
+      // Chuẩn bị history cho Ollama — inject system prompt nếu có
+      const history: OllamaChatMessage[] = [];
+
+      // BUG FIX: Inject system prompt (VD: IPA Clinic phonetician instruction)
+      if (systemPromptRef.current) {
+        history.push({ role: 'system', content: systemPromptRef.current });
+      }
+
+      // Thêm lịch sử hội thoại (6 tin gần nhất)
+      const recentMsgs = messagesRef.current.slice(-6).map(m => ({
+        role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: m.text
       }));
+      history.push(...recentMsgs);
 
       const responseText = await OllamaService.sendChatMessage(history, text);
       setIsThinking(false);
@@ -149,11 +160,18 @@ export const useAuraLocalVoice = () => {
     );
   };
 
-  const connect = async (initialGreeting?: string) => {
+  /**
+   * @param initialGreeting - Câu chào hiển thị + đọc TTS cho user
+   * @param systemPrompt - Prompt hệ thống inject vào Ollama (VD: IPA phonetician)
+   */
+  const connect = async (initialGreeting?: string, systemPrompt?: string) => {
     isActiveRef.current = true;
     setConnected(true);
     setMessages([]);
     messagesRef.current = [];
+
+    // Lưu system prompt để inject vào mỗi lần gọi Ollama
+    systemPromptRef.current = systemPrompt || null;
 
     if (initialGreeting) {
        addMessage('model', initialGreeting);
