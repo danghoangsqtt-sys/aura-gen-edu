@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { IPASound } from '../../data/ipaData';
 import { ipaPracticeMap } from '../../data/ipaPracticeData';
+import { getVideoFilename } from '../../data/ipaVideoMap';
 import { analyzePronunciation, PronunciationFeedback } from '../../services/geminiService';
 import PracticeItem from '../PracticeItem';
 import IPAQuiz from './IPAQuiz';
@@ -131,15 +132,15 @@ const SoundDetail: React.FC<SoundDetailProps> = ({ sound, onBack }) => {
                   <video 
                     controls
                     className="w-full h-full object-cover"
-                    src={`/videos/ipa_${sound.symbol.replace(/ː/g, '_long')}.mp4`}
-                    poster={`/videos/posters/ipa_${sound.symbol.replace(/ː/g, '_long')}.jpg`}
+                    src={`/videos/${getVideoFilename(sound.symbol)}.mp4`}
+                    poster={`/videos/posters/${getVideoFilename(sound.symbol)}.jpg`}
                   >
                     Trình duyệt của bạn không hỗ trợ thẻ video.
                   </video>
                   <div className="absolute inset-0 pointer-events-none border-4 border-transparent group-hover:border-indigo-500/20 transition-colors rounded-2xl"></div>
                 </div>
                 <p className="mt-4 text-sm text-slate-500 text-center">
-                  * Yêu cầu file video `public/videos/ipa_{sound.symbol.replace(/ː/g, '_long')}.mp4`
+                  * Yêu cầu file video: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{getVideoFilename(sound.symbol)}.mp4</code>
                 </p>
               </div>
             )}
